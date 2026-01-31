@@ -1,0 +1,11 @@
+[[plugins]]
+  package = "@netlify/plugin-emails" # Ignora questo, serve a "svegliare" il sistema plugin
+
+[[plugins]]
+  package = "netlify-plugin-flutter-sdk"
+  [plugins.inputs]
+    version = "stable"
+
+[build]
+  command = "flutter build web --release --dart-define=FLUTTER_WEB_RENDERER=html"
+  publish = "build/web"
