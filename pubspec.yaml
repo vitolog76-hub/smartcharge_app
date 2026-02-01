@@ -10,7 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  shared_preferences: ^2.2.2
+  firebase_core: ^3.10.1
+  cloud_firestore: ^5.6.2
+  shared_preferences: ^2.5.4
+  uuid: ^4.5.1
 
   # Libreria per la gestione delle date e formattazione oraria
   intl: ^0.19.0
@@ -18,8 +21,6 @@ dependencies:
   # Libreria per i grafici (BarChart e LineChart)
   fl_chart: ^0.70.0
   
-  # Libreria per il salvataggio locale dei log
-  shared_preferences: ^2.5.4
 
   # Icone aggiuntive stile iOS (opzionale ma consigliato)
   cupertino_icons: ^1.0.8
