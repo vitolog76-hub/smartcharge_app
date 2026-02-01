@@ -88,7 +88,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   Future<void> _loadAllData() async {
     final prefs = await SharedPreferences.getInstance();
-    
     String? id = prefs.getString('user_id');
     if (id == null) {
       id = const Uuid().v4();
@@ -232,7 +231,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
           IconButton(icon: const Icon(Icons.settings, color: Colors.white38, size: 20), onPressed: _showSettingsDialog),
           AnimatedBuilder(
             animation: _glowController,
-            builder: (context, child) => Text("SMART CHARGER", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 3, color: Colors.cyanAccent, shadows: [Shadow(color: Colors.cyanAccent.withOpacity(0.5), blurRadius: _glowController.value * 15)])),
+            // TEST: HO CAMBIATO LA SCRITTA QUI SOTTO
+            builder: (context, child) => Text("PROVA", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 3, color: Colors.cyanAccent, shadows: [Shadow(color: Colors.cyanAccent.withOpacity(0.5), blurRadius: _glowController.value * 15)])),
           ),
           IconButton(icon: const Icon(Icons.analytics, color: Colors.cyanAccent, size: 20), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => LogView(logs: chargeLogs, costPerKwh: energyCost, userId: _userId)))),
         ],
@@ -374,7 +374,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   void _controlSimulation() { if (isWaiting || isCharging) { _stopSimulation(); } else { if (calculatedStartTime == null) return; setState(() { isWaiting = true; simulatedSoc = currentSoc; energyDeliveredInSession = 0.0; lastTimestamp = DateTime.now(); }); _saveCurrentState(); _startHardTicker(); } }
 
-  // --- METODO LOG AGGIORNATO CON SNACKBAR ---
   Future<void> _addLogEntry(double kwh) async {
     final prefs = await SharedPreferences.getInstance();
     final logId = DateTime.now().millisecondsSinceEpoch;
@@ -388,27 +387,22 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       try {
         await FirebaseFirestore.instance.collection('users').doc(_userId).collection('logs').doc(logId.toString()).set(newLog);
         
-        // Feedback Successo
+        // TEST: SNACKBAR CON SFONDO ROSSO PER RICONOSCERLO
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text("✅ Ricarica salvata correttamente!"),
-              backgroundColor: Colors.greenAccent.withOpacity(0.8),
+              content: const Text("DATABASE AGGIORNATO!"),
+              backgroundColor: Colors.red, // Rosso per test
               behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
+              duration: const Duration(seconds: 3),
             ),
           );
         }
       } catch (e) { 
         debugPrint("Firebase Error: $e");
-        // Feedback Errore
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("❌ Errore Cloud: $e"),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-            ),
+            SnackBar(content: Text("ERRORE CLOUD: $e"), backgroundColor: Colors.orange),
           );
         }
       }
@@ -468,11 +462,6 @@ class _LogViewState extends State<LogView> {
               await prefs.setString('charge_logs', jsonEncode(localLogs));
               if (widget.userId != null) {
                 FirebaseFirestore.instance.collection('users').doc(widget.userId).collection('logs').doc(id.toString()).delete();
-              }
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Log eliminato"), behavior: SnackBarBehavior.floating)
-                );
               }
             }),
           ]),
