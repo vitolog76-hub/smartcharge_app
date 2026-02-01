@@ -9,7 +9,6 @@ import 'package:uuid/uuid.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Inizializzazione Firebase specifica per il tuo progetto
   await Firebase.initializeApp(
     options: const FirebaseOptions(
       apiKey: "AIzaSyAjKI3YdGvyjTcjX9NH5EZBxS5eGN1saf4",
@@ -90,7 +89,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   Future<void> _loadAllData() async {
     final prefs = await SharedPreferences.getInstance();
     
-    // Gestione ID Utente per Firebase
     String? id = prefs.getString('user_id');
     if (id == null) {
       id = const Uuid().v4();
@@ -118,6 +116,23 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     });
     _updateCalculation();
     if (isWaiting || isCharging) { lastTimestamp = DateTime.now(); _startHardTicker(); }
+  }
+
+  Future<void> _syncSettingsToFirebase() async {
+    if (_userId == null) return;
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(_userId).set({
+        'settings': {
+          'batteryCapacity': batteryCapacity,
+          'wallboxPower': wallboxPower,
+          'energyCost': energyCost,
+          'targetSoc': targetSoc,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        }
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint("Firebase Sync Error: $e");
+    }
   }
 
   double get _totalEnergyRequired => ((targetSoc - currentSoc) / 100) * batteryCapacity;
@@ -172,6 +187,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     await prefs.setBool('is_charging', isCharging);
     await prefs.setDouble('session_energy', energyDeliveredInSession);
     await prefs.setDouble('current_wallbox_power', wallboxPower);
+    await prefs.setDouble('target_soc', targetSoc);
   }
 
   @override
@@ -279,7 +295,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       decoration: BoxDecoration(color: Colors.white.withOpacity(0.02), borderRadius: BorderRadius.circular(12)),
       child: Row(children: [
         const Text("Pwr", style: TextStyle(fontSize: 10, color: Colors.white38)),
-        Expanded(child: Slider(value: wallboxPower, min: 1.0, max: 22.0, divisions: 42, activeColor: Colors.orangeAccent, onChanged: (v) { setState(() { wallboxPower = v; _updateCalculation(); }); _saveCurrentState(); })),
+        Expanded(child: Slider(value: wallboxPower, min: 1.0, max: 22.0, divisions: 42, activeColor: Colors.orangeAccent, onChanged: (v) { setState(() { wallboxPower = v; _updateCalculation(); }); _saveCurrentState(); _syncSettingsToFirebase(); })),
         Text("${wallboxPower.toStringAsFixed(1)} kW", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orangeAccent, fontSize: 11)),
       ]),
     );
@@ -289,7 +305,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     return Row(children: [
       Expanded(child: _smallControl("SoC START", "${currentSoc.toInt()}%", () => _showVerticalSlider("ATTUALE", currentSoc, (v) => setState(() => currentSoc = v)))),
       const SizedBox(width: 8),
-      Expanded(child: _smallControl("SoC TARGET", "${targetSoc.toInt()}%", () => _showVerticalSlider("TARGET", targetSoc, (v) => setState(() => targetSoc = v)))),
+      Expanded(child: _smallControl("SoC TARGET", "${targetSoc.toInt()}%", () => _showVerticalSlider("TARGET", targetSoc, (v) { setState(() => targetSoc = v); _syncSettingsToFirebase(); }))),
       const SizedBox(width: 8),
       Expanded(child: _smallControl("FINE", endChargeTime.format(context), () async {
         final t = await showTimePicker(context: context, initialTime: endChargeTime);
@@ -328,7 +344,9 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       final prefs = await SharedPreferences.getInstance();
       setState(() { batteryCapacity = double.tryParse(_capController.text) ?? 44.0; energyCost = double.tryParse(_costController.text) ?? 0.25; wallboxPower = double.tryParse(_pwrDefController.text) ?? 3.7; });
       await prefs.setDouble('default_battery_capacity', batteryCapacity); await prefs.setDouble('energy_cost', energyCost); await prefs.setDouble('current_wallbox_power', wallboxPower);
-      _updateCalculation(); Navigator.pop(c);
+      _updateCalculation(); 
+      _syncSettingsToFirebase();
+      Navigator.pop(c);
     }, child: const Text("SALVA"))]));
   }
 
@@ -356,6 +374,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   void _controlSimulation() { if (isWaiting || isCharging) { _stopSimulation(); } else { if (calculatedStartTime == null) return; setState(() { isWaiting = true; simulatedSoc = currentSoc; energyDeliveredInSession = 0.0; lastTimestamp = DateTime.now(); }); _saveCurrentState(); _startHardTicker(); } }
 
+  // --- METODO LOG AGGIORNATO CON SNACKBAR ---
   Future<void> _addLogEntry(double kwh) async {
     final prefs = await SharedPreferences.getInstance();
     final logId = DateTime.now().millisecondsSinceEpoch;
@@ -365,11 +384,34 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     setState(() { chargeLogs.add(newLog); });
     await prefs.setString('charge_logs', jsonEncode(chargeLogs));
     
-    // Sincronizzazione Cloud Firebase
     if (_userId != null) {
       try {
         await FirebaseFirestore.instance.collection('users').doc(_userId).collection('logs').doc(logId.toString()).set(newLog);
-      } catch (e) { debugPrint("Firebase Error: $e"); }
+        
+        // Feedback Successo
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text("✅ Ricarica salvata correttamente!"),
+              backgroundColor: Colors.greenAccent.withOpacity(0.8),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } catch (e) { 
+        debugPrint("Firebase Error: $e");
+        // Feedback Errore
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("❌ Errore Cloud: $e"),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
     }
   }
 }
@@ -426,6 +468,11 @@ class _LogViewState extends State<LogView> {
               await prefs.setString('charge_logs', jsonEncode(localLogs));
               if (widget.userId != null) {
                 FirebaseFirestore.instance.collection('users').doc(widget.userId).collection('logs').doc(id.toString()).delete();
+              }
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Log eliminato"), behavior: SnackBarBehavior.floating)
+                );
               }
             }),
           ]),
