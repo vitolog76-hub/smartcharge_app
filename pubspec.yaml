@@ -18,7 +18,7 @@ dependencies:
   fl_chart: ^0.70.0
   
   # Libreria per il salvataggio locale dei log
-  shared_preferences: ^2.5.0
+  shared_preferences: ^2.5.4
 
   # Icone aggiuntive stile iOS (opzionale ma consigliato)
   cupertino_icons: ^1.0.8
