@@ -37,7 +37,6 @@ class SmartChargeApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF010A0F), 
         primaryColor: Colors.cyanAccent, 
         useMaterial3: true,
-        snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
       ),
       home: const Dashboard(),
     );
@@ -98,13 +97,10 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // --- LOGICA CORE ---
+  // --- LOGICA ---
   void _showSnack(String msg, {bool isError = false}) {
     HapticFeedback.lightImpact(); 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: isError ? Colors.redAccent : const Color(0xFF101A26),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: isError ? Colors.redAccent : const Color(0xFF101A26)));
   }
 
   void _syncUser(String newId) async {
@@ -121,13 +117,13 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
           }
         });
         prefs.setString('uid', newId);
-        _showSnack("Dati recuperati con successo!");
+        _showSnack("Dati Sincronizzati");
       } else {
         setState(() => userId = newId);
         prefs.setString('uid', newId);
-        _showSnack("Nuovo ID impostato");
+        _showSnack("ID Salvato");
       }
-    } catch (e) { _showSnack("Errore Sincronizzazione", isError: true); }
+    } catch (e) { _showSnack("Errore Sync", isError: true); }
   }
 
   void _updateClock() {
@@ -214,83 +210,63 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     setState(() { history.insert(0, log); if(tot) currentSoc = socTarget; energySession = 0; isActive = false; });
     (await SharedPreferences.getInstance()).setString('logs', jsonEncode(history));
     try { await FirebaseFirestore.instance.collection('users').doc(userId).set({'history': history, 'lastUpdate': DateTime.now()}); } catch(e){}
-    _showSnack("Dati salvati nel Cloud!");
+    _showSnack("Salvato!");
   }
 
-  void _exportHistoryToCSV(String? filter) {
+  void _deleteCharge(int index) async {
+    setState(() => history.removeAt(index));
+    (await SharedPreferences.getInstance()).setString('logs', jsonEncode(history));
+    try { await FirebaseFirestore.instance.collection('users').doc(userId).update({'history': history}); } catch(e){}
+    _showSnack("Carica eliminata");
+  }
+
+  void _exportCSV(String? f) {
     String csv = "Data;kWh;Costo\n";
-    var filtered = history.where((l) => filter == null || DateFormat('MM/yyyy').format(DateTime.parse(l['date'])) == filter).toList();
-    for (var l in filtered) {
-      csv += "${DateFormat('dd/MM HH:mm').format(DateTime.parse(l['date']))};${l['kwh'].toStringAsFixed(2)};${l['cost'].toStringAsFixed(2)}\n";
-    }
+    var filtered = history.where((l) => f == null || DateFormat('MM/yyyy').format(DateTime.parse(l['date'])) == f).toList();
+    for (var l in filtered) csv += "${DateFormat('dd/MM HH:mm').format(DateTime.parse(l['date']))};${l['kwh'].toStringAsFixed(2)};${l['cost'].toStringAsFixed(2)}\n";
     Clipboard.setData(ClipboardData(text: csv));
     _showSnack("CSV Copiato!");
   }
 
-  // --- UI BACKGROUND ---
+  // --- UI LIQUID GLASS ---
   Widget _liquidBackground() {
-    return AnimatedBuilder(
-      animation: _bgController,
-      builder: (context, child) {
-        return Stack(
-          children: [
-            Container(color: const Color(0xFF020B12)),
-            Positioned(
-              top: -100 + (math.sin(_bgController.value * 2 * math.pi) * 50),
-              left: -50 + (math.cos(_bgController.value * 2 * math.pi) * 50),
-              child: Container(width: 300, height: 300, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [Colors.cyanAccent.withOpacity(0.08), Colors.transparent]))),
-            ),
-            Positioned(
-              bottom: 100 + (math.cos(_bgController.value * 2 * math.pi) * 40),
-              right: -80 + (math.sin(_bgController.value * 2 * math.pi) * 60),
-              child: Container(width: 250, height: 250, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [Colors.blueAccent.withOpacity(0.1), Colors.transparent]))),
-            ),
-          ],
-        );
-      },
-    );
+    return AnimatedBuilder(animation: _bgController, builder: (context, child) => Stack(children: [
+      Container(color: const Color(0xFF020B12)),
+      Positioned(top: -100 + (math.sin(_bgController.value * 2 * math.pi) * 50), left: -50, child: _glassCircle(300, Colors.cyanAccent.withOpacity(0.08))),
+      Positioned(bottom: 100, right: -80 + (math.sin(_bgController.value * 2 * math.pi) * 60), child: _glassCircle(250, Colors.blueAccent.withOpacity(0.1))),
+    ]));
   }
+  Widget _glassCircle(double s, Color c) => Container(width: s, height: s, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [c, Colors.transparent])));
 
   @override
   Widget build(BuildContext context) {
     Color statusCol = isCharging ? Colors.greenAccent : (isWaiting ? Colors.orangeAccent : Colors.cyanAccent);
     return Scaffold(
-      body: Stack(
-        children: [
-          _liquidBackground(),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(children: [
-                _header(),
-                _compactMainRow(),
-                _statusBadge(statusCol, isCharging ? "CARICA IN CORSO" : (isWaiting ? "IN ATTESA" : "SISTEMA OFF")),
-                const SizedBox(height: 15),
-                _horizontalBatteryWide(currentSoc), 
-                _energyEstimates(),
-                const SizedBox(height: 10),
-                _paramSliders(), 
-                const Spacer(),
-                _controls(),
-                const SizedBox(height: 15),
-                _actionButtons(),
-                const SizedBox(height: 10),
-              ]),
-            ),
-          ),
-        ],
-      ),
+      body: Stack(children: [
+        _liquidBackground(),
+        SafeArea(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
+          _header(),
+          _compactMainRow(),
+          _statusBadge(statusCol, isCharging ? "CARICA IN CORSO" : (isWaiting ? "IN ATTESA" : "SISTEMA OFF")),
+          const SizedBox(height: 15),
+          _liquidBatterySection(currentSoc), 
+          _energyEstimates(),
+          _paramSliders(), 
+          const Spacer(),
+          _controls(),
+          const SizedBox(height: 15),
+          _actionButtons(),
+          const SizedBox(height: 10),
+        ]))),
+      ]),
     );
   }
 
-  Widget _header() => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 10),
-    child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      IconButton(icon: const Icon(Icons.settings_outlined, color: Colors.white30), onPressed: _showSettings),
-      const Text("SMART CHARGE", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2, color: Colors.cyanAccent, fontSize: 18)),
-      IconButton(icon: const Icon(Icons.history, color: Colors.cyanAccent), onPressed: _showHistory),
-    ]),
-  );
+  Widget _header() => Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+    IconButton(icon: const Icon(Icons.settings_outlined, color: Colors.white30), onPressed: _showSettings),
+    const Text("SMART CHARGE", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2, color: Colors.cyanAccent, fontSize: 18)),
+    IconButton(icon: const Icon(Icons.history, color: Colors.cyanAccent), onPressed: _showHistory),
+  ]));
 
   Widget _compactMainRow() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
     _dateCol("INIZIO", fullStartDate, isWaiting ? Colors.orangeAccent : Colors.white24),
@@ -306,16 +282,28 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     Text(d != null ? DateFormat('HH:mm').format(d) : "--:--", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: c)),
   ]);
 
-  Widget _horizontalBatteryWide(double soc) {
+  // --- BATTERIA LIQUID GLASS A SETTORI ---
+  Widget _liquidBatterySection(double soc) {
     Color batteryColor = soc > 80 ? Colors.greenAccent : (soc > 30 ? Colors.cyanAccent : Colors.orangeAccent);
-    return Container(
-      height: 65, padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.03), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)),
-      child: Stack(alignment: Alignment.center, children: [
-        ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: soc/100, backgroundColor: Colors.transparent, color: batteryColor.withOpacity(0.3), minHeight: 60)),
-        Text("${soc.toStringAsFixed(1)}%", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: batteryColor)),
-      ]),
-    );
+    return Column(children: [
+      Container(
+        height: 60, padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)),
+        child: Row(children: List.generate(10, (i) {
+          bool active = soc >= (i + 1) * 10 - 5;
+          return Expanded(child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              gradient: active ? LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [batteryColor.withOpacity(0.7), batteryColor.withOpacity(0.3)]) : null,
+              color: active ? null : Colors.white.withOpacity(0.05),
+            ),
+          ));
+        })),
+      ),
+      const SizedBox(height: 6),
+      Text("${soc.toStringAsFixed(2).replaceFirst('.', ',')}%", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: batteryColor)),
+    ]);
   }
 
   Widget _energyEstimates() {
@@ -363,66 +351,32 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     ]),
   ]);
 
-  // --- IMPOSTAZIONI AGGIORNATE CON USER ID ---
   void _showSettings() {
     showDialog(context: context, builder: (c) => AlertDialog(
       backgroundColor: const Color(0xFF0A141D),
-      title: const Text("CONFIGURAZIONE", style: TextStyle(color: Colors.cyanAccent)),
-      content: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          _settingField("COSTO €/kWh", _costCtrl),
-          _settingField("POWER kW", _pwrCtrl),
-          _settingField("CAPACITY kWh", _capCtrl),
-          const SizedBox(height: 20),
-          const Divider(color: Colors.white10),
-          const Text("USER ID (Device Sync)", style: TextStyle(fontSize: 10, color: Colors.white38)),
-          TextField(controller: _uidCtrl, decoration: const InputDecoration(hintText: "Incolla il tuo ID qui")),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () { 
-              _updateParams(
-                cost: double.tryParse(_costCtrl.text.replaceAll(',', '.')), 
-                pwr: double.tryParse(_pwrCtrl.text.replaceAll(',', '.')), 
-                cap: double.tryParse(_capCtrl.text.replaceAll(',', '.'))
-              ); 
-              _syncUser(_uidCtrl.text);
-              Navigator.pop(c); 
-            }, 
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
-            child: const Text("SALVA TUTTO")
-          )
-        ]),
-      ),
+      title: const Text("CONFIGURAZIONE"),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        _settingField("COSTO €/kWh", _costCtrl),
+        _settingField("POWER kW", _pwrCtrl),
+        _settingField("CAPACITY kWh", _capCtrl),
+        const SizedBox(height: 10),
+        TextField(controller: _uidCtrl, decoration: const InputDecoration(labelText: "USER ID")),
+        const SizedBox(height: 20),
+        ElevatedButton(onPressed: () { _updateParams(cost: double.tryParse(_costCtrl.text), pwr: double.tryParse(_pwrCtrl.text), cap: double.tryParse(_capCtrl.text)); _syncUser(_uidCtrl.text); Navigator.pop(c); }, child: const Text("SALVA"))
+      ]),
     ));
   }
+  Widget _settingField(String l, TextEditingController c) => TextField(controller: c, decoration: InputDecoration(labelText: l), keyboardType: TextInputType.number);
 
-  Widget _settingField(String l, TextEditingController c) => TextField(controller: c, decoration: InputDecoration(labelText: l), keyboardType: const TextInputType.numberWithOptions(decimal: true));
-
-  // --- SLIDER VERTICALE AGGIORNATO CON +/- ---
   void _verticalSlider(bool start) {
     showDialog(context: context, builder: (c) => StatefulBuilder(builder: (c, st) {
       double val = start ? socStart : socTarget;
-      return AlertDialog(
-        backgroundColor: const Color(0xFF0A141D), 
-        content: SizedBox(height: 300, child: Column(children: [
-          Text("${val.toInt()}%", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
-          const SizedBox(height: 10),
-          IconButton(icon: const Icon(Icons.add_circle_outline, size: 30), onPressed: () {
-            double newVal = (val + 1).clamp(0, 100);
-            setState(() { if(start){socStart=newVal;currentSoc=newVal;}else{socTarget=newVal;} _recalcSchedule(); });
-            st(() {});
-          }),
-          Expanded(child: RotatedBox(quarterTurns: 3, child: Slider(
-            value: val, min: 0, max: 100, activeColor: Colors.cyanAccent, 
-            onChanged: (v) { st(() {}); setState((){ if(start){socStart=v;currentSoc=v;}else{socTarget=v;} _recalcSchedule(); }); }
-          ))),
-          IconButton(icon: const Icon(Icons.remove_circle_outline, size: 30), onPressed: () {
-            double newVal = (val - 1).clamp(0, 100);
-            setState(() { if(start){socStart=newVal;currentSoc=newVal;}else{socTarget=newVal;} _recalcSchedule(); });
-            st(() {});
-          }),
-        ]))
-      );
+      return AlertDialog(backgroundColor: const Color(0xFF0A141D), content: SizedBox(height: 300, child: Column(children: [
+        Text("${val.toInt()}%", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+        IconButton(icon: const Icon(Icons.add_circle_outline, size: 30), onPressed: () { val = (val+1).clamp(0, 100); setState((){if(start){socStart=val;currentSoc=val;}else{socTarget=val;}}); st((){}); }),
+        Expanded(child: RotatedBox(quarterTurns: 3, child: Slider(value: val, min: 0, max: 100, activeColor: Colors.cyanAccent, onChanged: (v){ setState((){if(start){socStart=v;currentSoc=v;}else{socTarget=v;}}); st((){}); }))),
+        IconButton(icon: const Icon(Icons.remove_circle_outline, size: 30), onPressed: () { val = (val-1).clamp(0, 100); setState((){if(start){socStart=val;currentSoc=val;}else{socTarget=val;}}); st((){}); }),
+      ])));
     }));
   }
 
@@ -431,30 +385,44 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     if(t != null) { setState(() { targetTimeInput = t; }); _recalcSchedule(); }
   }
 
+  // --- CRONOLOGIA CON SWIPE E HINT ---
   void _showHistory() {
-    String? currentMonthFilter;
-    showModalBottomSheet(context: context, backgroundColor: const Color(0xFF0A141D), isScrollControlled: true, builder: (c) => StatefulBuilder(builder: (context, setModalState) {
-      var filtered = history.where((l) => currentMonthFilter == null || DateFormat('MM/yyyy').format(DateTime.parse(l['date'])) == currentMonthFilter).toList();
+    String? currentMonth;
+    showModalBottomSheet(context: context, backgroundColor: const Color(0xFF0A141D), isScrollControlled: true, builder: (c) => StatefulBuilder(builder: (context, setModal) {
+      var filtered = history.where((l) => currentMonth == null || DateFormat('MM/yyyy').format(DateTime.parse(l['date'])) == currentMonth).toList();
       double tK = filtered.fold(0, (s, i) => s + (i['kwh'] ?? 0));
       double tC = filtered.fold(0, (s, i) => s + (i['cost'] ?? 0));
-      return SizedBox(height: MediaQuery.of(context).size.height * 0.8, child: Column(children: [
+      return SizedBox(height: MediaQuery.of(context).size.height * 0.85, child: Column(children: [
         Padding(padding: const EdgeInsets.all(20), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text("HISTORY", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.cyanAccent)),
-          IconButton(icon: const Icon(Icons.download, color: Colors.greenAccent), onPressed: () => _exportHistoryToCSV(currentMonthFilter))
+          const Text("CRONOLOGIA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.cyanAccent)),
+          IconButton(icon: const Icon(Icons.download, color: Colors.greenAccent), onPressed: () => _exportCSV(currentMonth))
         ])),
+        // Hint per lo swipe
+        const Text("← Trascina a sinistra per eliminare", style: TextStyle(fontSize: 10, color: Colors.white24, fontStyle: FontStyle.italic)),
+        const SizedBox(height: 10),
         if (history.isNotEmpty) Container(
-          padding: const EdgeInsets.all(20), margin: const EdgeInsets.symmetric(horizontal: 15),
+          padding: const EdgeInsets.all(15), margin: const EdgeInsets.symmetric(horizontal: 15),
           decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(15)),
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-            Column(children: [const Text("ENERGY", style: TextStyle(fontSize: 10, color: Colors.white38)), Text("${tK.toStringAsFixed(1)} kWh", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.cyanAccent))]),
-            Column(children: [const Text("COST", style: TextStyle(fontSize: 10, color: Colors.white38)), Text("€ ${tC.toStringAsFixed(2)}", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.greenAccent))]),
+            Column(children: [const Text("KWH", style: TextStyle(fontSize: 10, color: Colors.white38)), Text("${tK.toStringAsFixed(1)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.cyanAccent))]),
+            Column(children: [const Text("COSTO", style: TextStyle(fontSize: 10, color: Colors.white38)), Text("€ ${tC.toStringAsFixed(2)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.greenAccent))]),
           ]),
         ),
-        SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
-          ChoiceChip(label: const Text("All"), selected: currentMonthFilter == null, onSelected: (s) => setModalState(() => currentMonthFilter = null)),
-          ...history.map((e) => DateFormat('MM/yyyy').format(DateTime.parse(e['date']))).toSet().map((m) => Padding(padding: const EdgeInsets.only(left: 8), child: ChoiceChip(label: Text(m), selected: currentMonthFilter == m, onSelected: (s) => setModalState(() => currentMonthFilter = s ? m : null)))),
+        SingleChildScrollView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.all(10), child: Row(children: [
+          ChoiceChip(label: const Text("Tutti"), selected: currentMonth == null, onSelected: (s) => setModal(() => currentMonth = null)),
+          ...history.map((e) => DateFormat('MM/yyyy').format(DateTime.parse(e['date']))).toSet().map((m) => Padding(padding: const EdgeInsets.only(left: 8), child: ChoiceChip(label: Text(m), selected: currentMonth == m, onSelected: (s) => setModal(() => currentMonth = s ? m : null)))),
         ])),
-        Expanded(child: ListView.builder(itemCount: filtered.length, itemBuilder: (c, i) => ListTile(title: Text(DateFormat('dd/MM HH:mm').format(DateTime.parse(filtered[i]['date']))), subtitle: Text("${filtered[i]['kwh'].toStringAsFixed(2)} kWh"), trailing: Text("€ ${filtered[i]['cost'].toStringAsFixed(2)}", style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)))))
+        Expanded(child: ListView.builder(itemCount: filtered.length, itemBuilder: (c, i) => Dismissible(
+          key: Key(filtered[i]['date']),
+          direction: DismissDirection.endToStart,
+          background: Container(color: Colors.redAccent, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), child: const Icon(Icons.delete, color: Colors.white)),
+          onDismissed: (dir) => _deleteCharge(history.indexOf(filtered[i])),
+          child: ListTile(
+            title: Text(DateFormat('dd/MM HH:mm').format(DateTime.parse(filtered[i]['date']))),
+            subtitle: Text("${filtered[i]['kwh'].toStringAsFixed(2)} kWh"),
+            trailing: Text("€ ${filtered[i]['cost'].toStringAsFixed(2)}", style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold))
+          ),
+        )))
       ]));
     }));
   }
