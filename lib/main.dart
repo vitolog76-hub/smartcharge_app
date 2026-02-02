@@ -172,16 +172,25 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       batteryCap = (prefs.getDouble('cap') ?? 44.0);
       wallboxPwr = (prefs.getDouble('pwr') ?? 3.7).clamp(1.5, 11.0);
       costPerKwh = prefs.getDouble('cost') ?? 0.25;
+      
+      // PERSISTENZA SOC START/TARGET
       socStart = prefs.getDouble('soc_s') ?? 20.0;
       socTarget = prefs.getDouble('soc_t') ?? 80.0;
       
-      // RECUPERO ORA TARGET
+      // PERSISTENZA ORA TARGET
       int savedHour = prefs.getInt('targetHour') ?? 7;
       int savedMinute = prefs.getInt('targetMinute') ?? 0;
       targetTimeInput = TimeOfDay(hour: savedHour, minute: savedMinute);
 
       isActive = prefs.getBool('isActive') ?? false;
-      currentSoc = prefs.getDouble('currentSoc') ?? socStart;
+      
+      // Se non attivo, il SoC corrente coincide con quello di partenza impostato
+      if (!isActive) {
+        currentSoc = socStart;
+      } else {
+        currentSoc = prefs.getDouble('currentSoc') ?? socStart;
+      }
+      
       energySession = prefs.getDouble('energySession') ?? 0.0;
 
       _costCtrl.text = costPerKwh.toStringAsFixed(2);
@@ -218,6 +227,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     prefs.setBool('isActive', isActive);
     prefs.setDouble('currentSoc', currentSoc);
     prefs.setDouble('energySession', energySession);
+    prefs.setDouble('soc_s', socStart); // Assicura che soc_s sia salvato
   }
 
   void _save(bool tot) async {
@@ -408,33 +418,42 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       double val = start ? socStart : socTarget;
       return AlertDialog(backgroundColor: const Color(0xFF0A141D), content: SizedBox(height: 350, child: Column(children: [
         Text("${val.toInt()}%", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
-        IconButton(icon: const Icon(Icons.add_circle_outline, size: 30), onPressed: () { 
+        IconButton(icon: const Icon(Icons.add_circle_outline, size: 30), onPressed: () async { 
           val = (val + 1).clamp(0, 100); 
           setState(() { 
             if (start) { socStart = val.toDouble(); currentSoc = val.toDouble(); energySession = 0; } 
             else { socTarget = val.toDouble(); }
             _recalcSchedule();
           }); 
+          // PERSISTENZA IMMEDIATA
+          final prefs = await SharedPreferences.getInstance();
+          if (start) { prefs.setDouble('soc_s', socStart); } else { prefs.setDouble('soc_t', socTarget); }
           st(() {}); 
         }),
         Expanded(child: RotatedBox(quarterTurns: 3, child: Slider(
           value: val.toDouble(), min: 0, max: 100, activeColor: Colors.cyanAccent, 
-          onChanged: (v) { 
+          onChanged: (v) async { 
             setState(() { 
               if (start) { socStart = v.roundToDouble(); currentSoc = v.roundToDouble(); energySession = 0; } 
               else { socTarget = v.roundToDouble(); }
               _recalcSchedule();
             }); 
+            // PERSISTENZA IMMEDIATA
+            final prefs = await SharedPreferences.getInstance();
+            if (start) { prefs.setDouble('soc_s', socStart); } else { prefs.setDouble('soc_t', socTarget); }
             st(() {}); 
           }
         ))),
-        IconButton(icon: const Icon(Icons.remove_circle_outline, size: 30), onPressed: () { 
+        IconButton(icon: const Icon(Icons.remove_circle_outline, size: 30), onPressed: () async { 
           val = (val - 1).clamp(0, 100); 
           setState(() { 
             if (start) { socStart = val.toDouble(); currentSoc = val.toDouble(); energySession = 0; } 
             else { socTarget = val.toDouble(); }
             _recalcSchedule();
           }); 
+          // PERSISTENZA IMMEDIATA
+          final prefs = await SharedPreferences.getInstance();
+          if (start) { prefs.setDouble('soc_s', socStart); } else { prefs.setDouble('soc_t', socTarget); }
           st(() {}); 
         }),
       ])));
