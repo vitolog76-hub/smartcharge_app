@@ -150,7 +150,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       double socAdded = (kwhAdded / batteryCap) * 100;
       setState(() { energySession += kwhAdded; currentSoc += socAdded; });
       
-      // PERSISTENZA: Salva il progresso per non perderlo se chiudi l'app
       final prefs = await SharedPreferences.getInstance();
       prefs.setDouble('currentSoc', currentSoc);
       prefs.setDouble('energySession', energySession);
@@ -176,7 +175,11 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       socStart = prefs.getDouble('soc_s') ?? 20.0;
       socTarget = prefs.getDouble('soc_t') ?? 80.0;
       
-      // RECUPERA LO STATO PRECEDENTE (se esistente)
+      // RECUPERO ORA TARGET
+      int savedHour = prefs.getInt('targetHour') ?? 7;
+      int savedMinute = prefs.getInt('targetMinute') ?? 0;
+      targetTimeInput = TimeOfDay(hour: savedHour, minute: savedMinute);
+
       isActive = prefs.getBool('isActive') ?? false;
       currentSoc = prefs.getDouble('currentSoc') ?? socStart;
       energySession = prefs.getDouble('energySession') ?? 0.0;
@@ -212,7 +215,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       if (!isActive) { isWaiting = false; isCharging = false; }
       else { _recalcSchedule(); _lastTick = DateTime.now(); }
     });
-    // SALVA LO STATO ON/OFF
     prefs.setBool('isActive', isActive);
     prefs.setDouble('currentSoc', currentSoc);
     prefs.setDouble('energySession', energySession);
@@ -231,7 +233,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       isWaiting = false;
     });
     
-    // Pulisci lo stato salvato dopo il salvataggio definitivo
     prefs.setString('logs', jsonEncode(history));
     prefs.setBool('isActive', false);
     prefs.setDouble('currentSoc', currentSoc);
@@ -442,7 +443,13 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   void _pickTime() async {
     final t = await showTimePicker(context: context, initialTime: targetTimeInput);
-    if(t != null) { setState(() { targetTimeInput = t; }); _recalcSchedule(); }
+    if(t != null) { 
+      setState(() { targetTimeInput = t; }); 
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setInt('targetHour', t.hour);
+      prefs.setInt('targetMinute', t.minute);
+      _recalcSchedule(); 
+    }
   }
 
   void _showHistory() {
