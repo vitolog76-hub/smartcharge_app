@@ -141,7 +141,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     }
   }
 
-  void _processCharging() {
+  void _processCharging() async {
     if (_lastTick == null || !isCharging) return;
     final nowCharge = DateTime.now();
     double ms = nowCharge.difference(_lastTick!).inMilliseconds.toDouble();
@@ -149,6 +149,11 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       double kwhAdded = (wallboxPwr * (ms / 3600000));
       double socAdded = (kwhAdded / batteryCap) * 100;
       setState(() { energySession += kwhAdded; currentSoc += socAdded; });
+      
+      // PERSISTENZA: Salva il progresso per non perderlo se chiudi l'app
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setDouble('currentSoc', currentSoc);
+      prefs.setDouble('energySession', energySession);
     }
     _lastTick = nowCharge;
   }
@@ -170,7 +175,12 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       costPerKwh = prefs.getDouble('cost') ?? 0.25;
       socStart = prefs.getDouble('soc_s') ?? 20.0;
       socTarget = prefs.getDouble('soc_t') ?? 80.0;
-      currentSoc = socStart;
+      
+      // RECUPERA LO STATO PRECEDENTE (se esistente)
+      isActive = prefs.getBool('isActive') ?? false;
+      currentSoc = prefs.getDouble('currentSoc') ?? socStart;
+      energySession = prefs.getDouble('energySession') ?? 0.0;
+
       _costCtrl.text = costPerKwh.toStringAsFixed(2);
       _capCtrl.text = batteryCap.toStringAsFixed(0);
       _pwrCtrl.text = wallboxPwr.toStringAsFixed(1);
@@ -194,20 +204,39 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     _recalcSchedule();
   }
 
-  void _toggleSystem() {
+  void _toggleSystem() async {
     HapticFeedback.mediumImpact();
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
       isActive = !isActive;
       if (!isActive) { isWaiting = false; isCharging = false; }
       else { _recalcSchedule(); _lastTick = DateTime.now(); }
     });
+    // SALVA LO STATO ON/OFF
+    prefs.setBool('isActive', isActive);
+    prefs.setDouble('currentSoc', currentSoc);
+    prefs.setDouble('energySession', energySession);
   }
 
   void _save(bool tot) async {
+    final prefs = await SharedPreferences.getInstance();
     double kwh = tot ? (((socTarget - socStart)/100)*batteryCap) : energySession;
     final log = {'date': DateTime.now().toIso8601String(), 'kwh': kwh, 'cost': kwh * costPerKwh};
-    setState(() { history.insert(0, log); if(tot) currentSoc = socTarget; energySession = 0; isActive = false; });
-    (await SharedPreferences.getInstance()).setString('logs', jsonEncode(history));
+    setState(() { 
+      history.insert(0, log); 
+      if(tot) currentSoc = socTarget; 
+      energySession = 0; 
+      isActive = false; 
+      isCharging = false;
+      isWaiting = false;
+    });
+    
+    // Pulisci lo stato salvato dopo il salvataggio definitivo
+    prefs.setString('logs', jsonEncode(history));
+    prefs.setBool('isActive', false);
+    prefs.setDouble('currentSoc', currentSoc);
+    prefs.setDouble('energySession', 0.0);
+
     try { await FirebaseFirestore.instance.collection('users').doc(userId).set({'history': history, 'lastUpdate': DateTime.now()}); } catch(e){}
     _showSnack("Salvato!");
   }
@@ -444,7 +473,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
         Expanded(child: ListView.builder(itemCount: filtered.length, itemBuilder: (c, i) => Dismissible(
           key: Key(filtered[i]['date']),
           direction: DismissDirection.endToStart,
-          background: Container(color: Colors.redAccent, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), child: const Icon(Icons.delete, color: Colors.white)),
+          background: Container(color: Colors.redAccent, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 0), child: const Icon(Icons.delete, color: Colors.white)),
           onDismissed: (dir) => _deleteCharge(history.indexOf(filtered[i])),
           child: ListTile(
             title: Text(DateFormat('dd/MM HH:mm').format(DateTime.parse(filtered[i]['date']))),

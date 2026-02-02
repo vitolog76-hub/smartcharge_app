@@ -97,7 +97,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // --- LOGICA ---
   void _showSnack(String msg, {bool isError = false}) {
     HapticFeedback.lightImpact(); 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: isError ? Colors.redAccent : const Color(0xFF101A26)));
@@ -143,7 +142,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 
   void _processCharging() {
-    if (_lastTick == null) return;
+    if (_lastTick == null || !isCharging) return;
     final nowCharge = DateTime.now();
     double ms = nowCharge.difference(_lastTick!).inMilliseconds.toDouble();
     if (ms > 0) {
@@ -228,7 +227,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     _showSnack("CSV Copiato!");
   }
 
-  // --- UI LIQUID GLASS ---
   Widget _liquidBackground() {
     return AnimatedBuilder(animation: _bgController, builder: (context, child) => Stack(children: [
       Container(color: const Color(0xFF020B12)),
@@ -282,7 +280,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     Text(d != null ? DateFormat('HH:mm').format(d) : "--:--", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: c)),
   ]);
 
-  // --- BATTERIA LIQUID GLASS A SETTORI ---
   Widget _liquidBatterySection(double soc) {
     Color batteryColor = soc > 80 ? Colors.greenAccent : (soc > 30 ? Colors.cyanAccent : Colors.orangeAccent);
     return Column(children: [
@@ -355,15 +352,23 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     showDialog(context: context, builder: (c) => AlertDialog(
       backgroundColor: const Color(0xFF0A141D),
       title: const Text("CONFIGURAZIONE"),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
+      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
         _settingField("COSTO €/kWh", _costCtrl),
         _settingField("POWER kW", _pwrCtrl),
         _settingField("CAPACITY kWh", _capCtrl),
         const SizedBox(height: 10),
         TextField(controller: _uidCtrl, decoration: const InputDecoration(labelText: "USER ID")),
         const SizedBox(height: 20),
-        ElevatedButton(onPressed: () { _updateParams(cost: double.tryParse(_costCtrl.text), pwr: double.tryParse(_pwrCtrl.text), cap: double.tryParse(_capCtrl.text)); _syncUser(_uidCtrl.text); Navigator.pop(c); }, child: const Text("SALVA"))
-      ]),
+        ElevatedButton(onPressed: () { 
+          _updateParams(
+            cost: double.tryParse(_costCtrl.text.replaceAll(',', '.')), 
+            pwr: double.tryParse(_pwrCtrl.text.replaceAll(',', '.')), 
+            cap: double.tryParse(_capCtrl.text.replaceAll(',', '.'))
+          ); 
+          _syncUser(_uidCtrl.text); 
+          Navigator.pop(c); 
+        }, child: const Text("SALVA"))
+      ])),
     ));
   }
   Widget _settingField(String l, TextEditingController c) => TextField(controller: c, decoration: InputDecoration(labelText: l), keyboardType: TextInputType.number);
@@ -371,11 +376,37 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   void _verticalSlider(bool start) {
     showDialog(context: context, builder: (c) => StatefulBuilder(builder: (c, st) {
       double val = start ? socStart : socTarget;
-      return AlertDialog(backgroundColor: const Color(0xFF0A141D), content: SizedBox(height: 300, child: Column(children: [
+      return AlertDialog(backgroundColor: const Color(0xFF0A141D), content: SizedBox(height: 350, child: Column(children: [
         Text("${val.toInt()}%", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
-        IconButton(icon: const Icon(Icons.add_circle_outline, size: 30), onPressed: () { val = (val+1).clamp(0, 100); setState((){if(start){socStart=val;currentSoc=val;}else{socTarget=val;}}); st((){}); }),
-        Expanded(child: RotatedBox(quarterTurns: 3, child: Slider(value: val, min: 0, max: 100, activeColor: Colors.cyanAccent, onChanged: (v){ setState((){if(start){socStart=v;currentSoc=v;}else{socTarget=v;}}); st((){}); }))),
-        IconButton(icon: const Icon(Icons.remove_circle_outline, size: 30), onPressed: () { val = (val-1).clamp(0, 100); setState((){if(start){socStart=val;currentSoc=val;}else{socTarget=val;}}); st((){}); }),
+        IconButton(icon: const Icon(Icons.add_circle_outline, size: 30), onPressed: () { 
+          val = (val + 1).clamp(0, 100); 
+          setState(() { 
+            if (start) { socStart = val.toDouble(); currentSoc = val.toDouble(); energySession = 0; } 
+            else { socTarget = val.toDouble(); }
+            _recalcSchedule();
+          }); 
+          st(() {}); 
+        }),
+        Expanded(child: RotatedBox(quarterTurns: 3, child: Slider(
+          value: val.toDouble(), min: 0, max: 100, activeColor: Colors.cyanAccent, 
+          onChanged: (v) { 
+            setState(() { 
+              if (start) { socStart = v.roundToDouble(); currentSoc = v.roundToDouble(); energySession = 0; } 
+              else { socTarget = v.roundToDouble(); }
+              _recalcSchedule();
+            }); 
+            st(() {}); 
+          }
+        ))),
+        IconButton(icon: const Icon(Icons.remove_circle_outline, size: 30), onPressed: () { 
+          val = (val - 1).clamp(0, 100); 
+          setState(() { 
+            if (start) { socStart = val.toDouble(); currentSoc = val.toDouble(); energySession = 0; } 
+            else { socTarget = val.toDouble(); }
+            _recalcSchedule();
+          }); 
+          st(() {}); 
+        }),
       ])));
     }));
   }
@@ -385,7 +416,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     if(t != null) { setState(() { targetTimeInput = t; }); _recalcSchedule(); }
   }
 
-  // --- CRONOLOGIA CON SWIPE E HINT ---
   void _showHistory() {
     String? currentMonth;
     showModalBottomSheet(context: context, backgroundColor: const Color(0xFF0A141D), isScrollControlled: true, builder: (c) => StatefulBuilder(builder: (context, setModal) {
@@ -397,7 +427,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
           const Text("CRONOLOGIA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.cyanAccent)),
           IconButton(icon: const Icon(Icons.download, color: Colors.greenAccent), onPressed: () => _exportCSV(currentMonth))
         ])),
-        // Hint per lo swipe
         const Text("← Trascina a sinistra per eliminare", style: TextStyle(fontSize: 10, color: Colors.white24, fontStyle: FontStyle.italic)),
         const SizedBox(height: 10),
         if (history.isNotEmpty) Container(
