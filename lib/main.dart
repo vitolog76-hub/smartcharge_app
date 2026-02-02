@@ -95,8 +95,9 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     }
     _userId = id;
 
+    final data = prefs.getString('charge_logs');
+    
     setState(() {
-      final data = prefs.getString('charge_logs');
       if (data != null) chargeLogs = List<Map<String, dynamic>>.from(jsonDecode(data));
       batteryCapacity = prefs.getDouble('default_battery_capacity') ?? 44.0;
       wallboxPower = prefs.getDouble('current_wallbox_power') ?? 3.7;
@@ -113,8 +114,31 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       simulatedSoc = currentSoc;
       energyDeliveredInSession = prefs.getDouble('session_energy') ?? 0.0;
     });
+
+    _fetchLogsFromFirebase();
     _updateCalculation();
     if (isWaiting || isCharging) { lastTimestamp = DateTime.now(); _startHardTicker(); }
+  }
+
+  Future<void> _fetchLogsFromFirebase() async {
+    if (_userId == null) return;
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_userId)
+          .collection('logs')
+          .orderBy('date', descending: true)
+          .get();
+      
+      if (snapshot.docs.isNotEmpty) {
+        final List<Map<String, dynamic>> firebaseLogs = snapshot.docs.map((doc) => doc.data()).toList();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('charge_logs', jsonEncode(firebaseLogs));
+        setState(() { chargeLogs = firebaseLogs; });
+      }
+    } catch (e) {
+      debugPrint("Errore sincronizzazione Firebase: $e");
+    }
   }
 
   Future<void> _syncSettingsToFirebase() async {
@@ -231,8 +255,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
           IconButton(icon: const Icon(Icons.settings, color: Colors.white38, size: 20), onPressed: _showSettingsDialog),
           AnimatedBuilder(
             animation: _glowController,
-            // TEST: HO CAMBIATO LA SCRITTA QUI SOTTO
-            builder: (context, child) => Text("PROVA", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 3, color: Colors.cyanAccent, shadows: [Shadow(color: Colors.cyanAccent.withOpacity(0.5), blurRadius: _glowController.value * 15)])),
+            builder: (context, child) => Text("PROVA2", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 3, color: Colors.cyanAccent, shadows: [Shadow(color: Colors.cyanAccent.withOpacity(0.5), blurRadius: _glowController.value * 15)])),
           ),
           IconButton(icon: const Icon(Icons.analytics, color: Colors.cyanAccent, size: 20), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => LogView(logs: chargeLogs, costPerKwh: energyCost, userId: _userId)))),
         ],
@@ -253,9 +276,9 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
             children: [
               _compactStat("ENERGIA TOTALE", "${totale.toStringAsFixed(1)} kWh", "${(totale * energyCost).toStringAsFixed(2)} €", Colors.cyanAccent),
               const SizedBox(height: 8),
-              _compactStat("MANCANTI", "${mancanti.toStringAsFixed(1)} kWh", "Countdown", Colors.orangeAccent),
+              _compactStat("MANCANTI", "${mancanti.toStringAsFixed(1)} kWh", "In ricarica...", Colors.orangeAccent),
               const SizedBox(height: 8),
-              _compactStat("AVVIO PREVISTO", calculatedStartTime != null ? DateFormat('HH:mm').format(calculatedStartTime!) : "--:--", "End: ${endChargeTime.format(context)}", Colors.white70),
+              _compactStat("AVVIO PREVISTO", calculatedStartTime != null ? DateFormat('HH:mm').format(calculatedStartTime!) : "--:--", "Target: ${endChargeTime.format(context)}", Colors.white70),
             ],
           ),
         ),
@@ -336,18 +359,47 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 
   void _showSettingsDialog() {
-    showDialog(context: context, builder: (c) => AlertDialog(backgroundColor: const Color(0xFF0F171E), title: const Text("SETTINGS"), content: Column(mainAxisSize: MainAxisSize.min, children: [
-      TextField(controller: _capController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Capacità (kWh)")),
-      TextField(controller: _costController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Costo (€/kWh)")),
-      TextField(controller: _pwrDefController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Wallbox Def. (kW)")),
-    ]), actions: [ElevatedButton(onPressed: () async {
-      final prefs = await SharedPreferences.getInstance();
-      setState(() { batteryCapacity = double.tryParse(_capController.text) ?? 44.0; energyCost = double.tryParse(_costController.text) ?? 0.25; wallboxPower = double.tryParse(_pwrDefController.text) ?? 3.7; });
-      await prefs.setDouble('default_battery_capacity', batteryCapacity); await prefs.setDouble('energy_cost', energyCost); await prefs.setDouble('current_wallbox_power', wallboxPower);
-      _updateCalculation(); 
-      _syncSettingsToFirebase();
-      Navigator.pop(c);
-    }, child: const Text("SALVA"))]));
+    final TextEditingController _idRecController = TextEditingController();
+    showDialog(context: context, builder: (c) => AlertDialog(
+      backgroundColor: const Color(0xFF0F171E), 
+      title: const Text("SETTINGS & ACCOUNT", style: TextStyle(fontSize: 16)), 
+      content: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
+            child: Column(children: [
+              const Text("IL TUO ID (Copia per recupero):", style: TextStyle(fontSize: 8, color: Colors.white38)),
+              SelectableText(_userId ?? "...", style: const TextStyle(fontSize: 10, color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
+            ]),
+          ),
+          const SizedBox(height: 15),
+          TextField(controller: _capController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Capacità (kWh)")),
+          TextField(controller: _costController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Costo (€/kWh)")),
+          const Divider(height: 30),
+          const Text("RECUPERA ACCOUNT", style: TextStyle(fontSize: 10, color: Colors.cyanAccent)),
+          TextField(controller: _idRecController, decoration: const InputDecoration(labelText: "Inserisci vecchio ID", labelStyle: TextStyle(fontSize: 10))),
+        ]),
+      ), 
+      actions: [
+        TextButton(onPressed: () async {
+          if (_idRecController.text.isNotEmpty) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('user_id', _idRecController.text.trim());
+            Navigator.pop(c);
+            _loadAllData();
+          }
+        }, child: const Text("RECUPERA ID", style: TextStyle(color: Colors.orangeAccent))),
+        ElevatedButton(onPressed: () async {
+          final prefs = await SharedPreferences.getInstance();
+          setState(() { batteryCapacity = double.tryParse(_capController.text) ?? 44.0; energyCost = double.tryParse(_costController.text) ?? 0.25; wallboxPower = double.tryParse(_pwrDefController.text) ?? 3.7; });
+          await prefs.setDouble('default_battery_capacity', batteryCapacity); await prefs.setDouble('energy_cost', energyCost); await prefs.setDouble('current_wallbox_power', wallboxPower);
+          _updateCalculation(); 
+          _syncSettingsToFirebase();
+          Navigator.pop(c);
+        }, child: const Text("SALVA"))
+      ]
+    ));
   }
 
   Widget _buildCyberBattery() {
@@ -380,31 +432,19 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     final dateStr = DateTime.now().toIso8601String();
     final newLog = {'id': logId, 'date': dateStr, 'kwh': kwh, 'cost': kwh * energyCost};
     
-    setState(() { chargeLogs.add(newLog); });
+    setState(() { chargeLogs.insert(0, newLog); }); 
     await prefs.setString('charge_logs', jsonEncode(chargeLogs));
     
     if (_userId != null) {
       try {
         await FirebaseFirestore.instance.collection('users').doc(_userId).collection('logs').doc(logId.toString()).set(newLog);
-        
-        // TEST: SNACKBAR CON SFONDO ROSSO PER RICONOSCERLO
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text("DATABASE AGGIORNATO!"),
-              backgroundColor: Colors.red, // Rosso per test
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 3),
-            ),
+            const SnackBar(content: Text("DATABASE AGGIORNATO!"), backgroundColor: Colors.green),
           );
         }
       } catch (e) { 
         debugPrint("Firebase Error: $e");
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("ERRORE CLOUD: $e"), backgroundColor: Colors.orange),
-          );
-        }
       }
     }
   }
