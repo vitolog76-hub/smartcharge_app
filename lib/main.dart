@@ -97,8 +97,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // --- LOGICA ORIGINALE PRESERVATA ---
-
   void _showSnack(String msg, {bool isError = false}) {
     HapticFeedback.lightImpact(); 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: isError ? Colors.redAccent : const Color(0xFF101A26)));
@@ -139,6 +137,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       } else if (currentSoc >= socTarget) {
         _toggleSystem();
         _save(true);
+        _showSnack("⚡ Ricarica Completata!");
       }
     }
   }
@@ -151,9 +150,11 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       double kwhAdded = (wallboxPwr * (ms / 3600000));
       double socAdded = (kwhAdded / batteryCap) * 100;
       setState(() { energySession += kwhAdded; currentSoc += socAdded; });
+      
       final prefs = await SharedPreferences.getInstance();
       prefs.setDouble('currentSoc', currentSoc);
       prefs.setDouble('energySession', energySession);
+      prefs.setString('lastUpdateTime', nowCharge.toIso8601String()); // Salva il tempo corrente
     }
     _lastTick = nowCharge;
   }
@@ -169,23 +170,56 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   void _loadData() async {
     final prefs = await SharedPreferences.getInstance();
     userId = prefs.getString('uid') ?? const Uuid().v4();
+    
+    batteryCap = (prefs.getDouble('cap') ?? 44.0);
+    wallboxPwr = (prefs.getDouble('pwr') ?? 3.7).clamp(1.5, 11.0);
+    costPerKwh = prefs.getDouble('cost') ?? 0.25;
+    socStart = prefs.getDouble('soc_s') ?? 20.0;
+    socTarget = prefs.getDouble('soc_t') ?? 80.0;
+    isActive = prefs.getBool('isActive') ?? false;
+    
+    double savedSoc = prefs.getDouble('currentSoc') ?? socStart;
+    double savedEnergy = prefs.getDouble('energySession') ?? 0.0;
+
+    // LOGICA DI RECUPERO TEMPO: Se il sistema era attivo, calcola quanto è passato
+    if (isActive) {
+      String? lastUpdateStr = prefs.getString('lastUpdateTime');
+      if (lastUpdateStr != null) {
+        DateTime lastUpdate = DateTime.parse(lastUpdateStr);
+        DateTime nowTime = DateTime.now();
+        int gapMs = nowTime.difference(lastUpdate).inMilliseconds;
+
+        if (gapMs > 0) {
+          double hoursPassed = gapMs / 3600000;
+          double potentialKwh = wallboxPwr * hoursPassed;
+          double potentialSocGain = (potentialKwh / batteryCap) * 100;
+
+          if (savedSoc + potentialSocGain >= socTarget) {
+            double actualGain = socTarget - savedSoc;
+            double actualKwh = (actualGain / 100) * batteryCap;
+            savedSoc = socTarget;
+            savedEnergy += actualKwh;
+            isActive = false; // Ferma il sistema se ha finito mentre era chiuso
+            prefs.setBool('isActive', false);
+          } else {
+            savedSoc += potentialSocGain;
+            savedEnergy += potentialKwh;
+          }
+        }
+      }
+    }
+
     setState(() {
-      batteryCap = (prefs.getDouble('cap') ?? 44.0);
-      wallboxPwr = (prefs.getDouble('pwr') ?? 3.7).clamp(1.5, 11.0);
-      costPerKwh = prefs.getDouble('cost') ?? 0.25;
-      socStart = prefs.getDouble('soc_s') ?? 20.0;
-      socTarget = prefs.getDouble('soc_t') ?? 80.0;
-      int savedHour = prefs.getInt('targetHour') ?? 7;
-      int savedMinute = prefs.getInt('targetMinute') ?? 0;
-      targetTimeInput = TimeOfDay(hour: savedHour, minute: savedMinute);
-      isActive = prefs.getBool('isActive') ?? false;
-      if (!isActive) { currentSoc = socStart; } 
-      else { currentSoc = prefs.getDouble('currentSoc') ?? socStart; }
-      energySession = prefs.getDouble('energySession') ?? 0.0;
+      currentSoc = savedSoc;
+      energySession = savedEnergy;
       _costCtrl.text = costPerKwh.toStringAsFixed(2);
       _capCtrl.text = batteryCap.toStringAsFixed(0);
       _pwrCtrl.text = wallboxPwr.toStringAsFixed(1);
       _uidCtrl.text = userId;
+      int savedHour = prefs.getInt('targetHour') ?? 7;
+      int savedMinute = prefs.getInt('targetMinute') ?? 0;
+      targetTimeInput = TimeOfDay(hour: savedHour, minute: savedMinute);
+      
       final data = prefs.getString('logs');
       if (data != null) history = List<Map<String, dynamic>>.from(jsonDecode(data));
     });
@@ -211,7 +245,11 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     setState(() {
       isActive = !isActive;
       if (!isActive) { isWaiting = false; isCharging = false; }
-      else { _recalcSchedule(); _lastTick = DateTime.now(); }
+      else { 
+        _recalcSchedule(); 
+        _lastTick = DateTime.now(); 
+        prefs.setString('lastUpdateTime', _lastTick!.toIso8601String());
+      }
     });
     prefs.setBool('isActive', isActive);
     prefs.setDouble('currentSoc', currentSoc);
@@ -322,7 +360,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     Text(d != null ? DateFormat('HH:mm').format(d) : "--:--", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: c)),
   ]);
 
-  // --- SEZIONE BATTERIA PREMIUM TECH CON PULSAR E DOPPIO DECIMALE ---
   Widget _premiumBatterySection(double soc) {
     Color batteryColor = soc > 80 ? Colors.greenAccent : (soc > 30 ? Colors.cyanAccent : Colors.orangeAccent);
     return Container(
@@ -339,22 +376,18 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
         child: Stack(
           children: [
             Container(color: const Color(0xFF040D12)),
-            
-            // Painter con Effetto Pulsar
             AnimatedBuilder(
               animation: _bgController,
               builder: (context, child) => CustomPaint(
                 size: const Size(double.infinity, 115),
                 painter: TechFlowPainter(
-                  soc / 100, 
+                  (soc / 100).clamp(0.0, 1.0), 
                   batteryColor, 
                   _bgController.value,
-                  isActive // Pulsar attivo se il sistema è ON
+                  isActive
                 ),
               ),
             ),
-            
-            // Riflesso Glass
             Positioned(
               top: 0, left: 0, right: 0,
               child: Container(
@@ -368,8 +401,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            
-            // Testo SoC con doppio decimale
             Center(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -533,7 +564,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
           padding: const EdgeInsets.all(15), margin: const EdgeInsets.symmetric(horizontal: 15),
           decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(15)),
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-            Column(children: [const Text("KWH", style: TextStyle(fontSize: 10, color: Colors.white38)), Text("${tK.toStringAsFixed(1)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.cyanAccent))]),
+            Column(children: [const Text("KWH", style: TextStyle(fontSize: 10, color: Colors.white38)), Text(tK.toStringAsFixed(1), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.cyanAccent))]),
             Column(children: [const Text("COSTO", style: TextStyle(fontSize: 10, color: Colors.white38)), Text("€ ${tC.toStringAsFixed(2)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.greenAccent))]),
           ]),
         ),
@@ -557,7 +588,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 }
 
-// --- TECH FLOW PAINTER CON EFFETTO PULSAR ---
 class TechFlowPainter extends CustomPainter {
   final double pct;
   final Color color;
@@ -570,13 +600,11 @@ class TechFlowPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final double currentWidth = size.width * pct;
     
-    // Calcolo opacità Pulsar (varia tra 0.3 e 0.7 se attivo)
     double pulsarOpacity = 0.5;
     if (isPulsing) {
       pulsarOpacity = 0.4 + (math.sin(anim * 2 * math.pi) * 0.2);
     }
 
-    // 1. Corpo della carica con gradiente e pulsar
     Paint fillPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.centerLeft,
@@ -589,7 +617,6 @@ class TechFlowPainter extends CustomPainter {
     
     canvas.drawRect(Rect.fromLTWH(0, 0, currentWidth, size.height), fillPaint);
 
-    // 2. Glow Scanner (Attivo solo durante il flusso)
     if (isPulsing && pct > 0) {
       final double scanPos = (anim * currentWidth * 1.8) - (currentWidth * 0.4);
       
@@ -608,7 +635,6 @@ class TechFlowPainter extends CustomPainter {
       );
     }
 
-    // 3. Leading Glow & Edge Line
     if (pct > 0.005) {
       Paint edgeGlow = Paint()
         ..color = color.withOpacity(isPulsing ? (0.6 + math.sin(anim * 2 * math.pi) * 0.2) : 0.6)
