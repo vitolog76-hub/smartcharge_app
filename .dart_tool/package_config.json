@@ -123,7 +123,7 @@
     },
     {
       "name": "flutter",
-      "rootUri": "file:///Users/giuseppevitolo/Development/flutter/packages/flutter",
+      "rootUri": "file:///Users/giuseppevitolo/development/flutter/packages/flutter",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -135,13 +135,13 @@
     },
     {
       "name": "flutter_test",
-      "rootUri": "file:///Users/giuseppevitolo/Development/flutter/packages/flutter_test",
+      "rootUri": "file:///Users/giuseppevitolo/development/flutter/packages/flutter_test",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
       "name": "flutter_web_plugins",
-      "rootUri": "file:///Users/giuseppevitolo/Development/flutter/packages/flutter_web_plugins",
+      "rootUri": "file:///Users/giuseppevitolo/development/flutter/packages/flutter_web_plugins",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -273,7 +273,7 @@
     },
     {
       "name": "sky_engine",
-      "rootUri": "file:///Users/giuseppevitolo/Development/flutter/bin/cache/pkg/sky_engine",
+      "rootUri": "file:///Users/giuseppevitolo/development/flutter/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -358,7 +358,7 @@
   ],
   "generator": "pub",
   "generatorVersion": "3.10.8",
-  "flutterRoot": "file:///Users/giuseppevitolo/Development/flutter",
+  "flutterRoot": "file:///Users/giuseppevitolo/development/flutter",
   "flutterVersion": "3.38.9",
   "pubCache": "file:///Users/giuseppevitolo/.pub-cache"
 }

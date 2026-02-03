@@ -82,8 +82,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _loadData();
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (t) => _updateClock());
-    _bgController = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat();
+    _clockTimer = Timer.periodic(const Duration(milliseconds: 100), (t) => _updateClock());
+    _bgController = AnimationController(vsync: this, duration: const Duration(seconds: 3))..repeat();
   }
 
   @override
@@ -96,6 +96,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     _uidCtrl.dispose();
     super.dispose();
   }
+
+  // --- LOGICA ORIGINALE PRESERVATA ---
 
   void _showSnack(String msg, {bool isError = false}) {
     HapticFeedback.lightImpact(); 
@@ -149,7 +151,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       double kwhAdded = (wallboxPwr * (ms / 3600000));
       double socAdded = (kwhAdded / batteryCap) * 100;
       setState(() { energySession += kwhAdded; currentSoc += socAdded; });
-      
       final prefs = await SharedPreferences.getInstance();
       prefs.setDouble('currentSoc', currentSoc);
       prefs.setDouble('energySession', energySession);
@@ -172,27 +173,15 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       batteryCap = (prefs.getDouble('cap') ?? 44.0);
       wallboxPwr = (prefs.getDouble('pwr') ?? 3.7).clamp(1.5, 11.0);
       costPerKwh = prefs.getDouble('cost') ?? 0.25;
-      
-      // PERSISTENZA SOC START/TARGET
       socStart = prefs.getDouble('soc_s') ?? 20.0;
       socTarget = prefs.getDouble('soc_t') ?? 80.0;
-      
-      // PERSISTENZA ORA TARGET
       int savedHour = prefs.getInt('targetHour') ?? 7;
       int savedMinute = prefs.getInt('targetMinute') ?? 0;
       targetTimeInput = TimeOfDay(hour: savedHour, minute: savedMinute);
-
       isActive = prefs.getBool('isActive') ?? false;
-      
-      // Se non attivo, il SoC corrente coincide con quello di partenza impostato
-      if (!isActive) {
-        currentSoc = socStart;
-      } else {
-        currentSoc = prefs.getDouble('currentSoc') ?? socStart;
-      }
-      
+      if (!isActive) { currentSoc = socStart; } 
+      else { currentSoc = prefs.getDouble('currentSoc') ?? socStart; }
       energySession = prefs.getDouble('energySession') ?? 0.0;
-
       _costCtrl.text = costPerKwh.toStringAsFixed(2);
       _capCtrl.text = batteryCap.toStringAsFixed(0);
       _pwrCtrl.text = wallboxPwr.toStringAsFixed(1);
@@ -227,7 +216,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     prefs.setBool('isActive', isActive);
     prefs.setDouble('currentSoc', currentSoc);
     prefs.setDouble('energySession', energySession);
-    prefs.setDouble('soc_s', socStart); // Assicura che soc_s sia salvato
+    prefs.setDouble('soc_s', socStart);
   }
 
   void _save(bool tot) async {
@@ -242,12 +231,10 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       isCharging = false;
       isWaiting = false;
     });
-    
     prefs.setString('logs', jsonEncode(history));
     prefs.setBool('isActive', false);
     prefs.setDouble('currentSoc', currentSoc);
     prefs.setDouble('energySession', 0.0);
-
     try { await FirebaseFirestore.instance.collection('users').doc(userId).set({'history': history, 'lastUpdate': DateTime.now()}); } catch(e){}
     _showSnack("Salvato!");
   }
@@ -267,14 +254,29 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     _showSnack("CSV Copiato!");
   }
 
+  // --- UI COMPONENTS ---
+
   Widget _liquidBackground() {
     return AnimatedBuilder(animation: _bgController, builder: (context, child) => Stack(children: [
       Container(color: const Color(0xFF020B12)),
-      Positioned(top: -100 + (math.sin(_bgController.value * 2 * math.pi) * 50), left: -50, child: _glassCircle(300, Colors.cyanAccent.withOpacity(0.08))),
-      Positioned(bottom: 100, right: -80 + (math.sin(_bgController.value * 2 * math.pi) * 60), child: _glassCircle(250, Colors.blueAccent.withOpacity(0.1))),
+      Positioned(
+        top: -150 + (math.sin(_bgController.value * 2 * math.pi) * 20), 
+        left: -80, 
+        child: _glassCircle(400, Colors.cyanAccent.withOpacity(0.06))
+      ),
+      Positioned(
+        bottom: 100 + (math.cos(_bgController.value * 2 * math.pi) * 10), 
+        right: -100, 
+        child: _glassCircle(350, Colors.blueAccent.withOpacity(0.08))
+      ),
+      Container(color: Colors.black.withOpacity(0.2)),
     ]));
   }
-  Widget _glassCircle(double s, Color c) => Container(width: s, height: s, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [c, Colors.transparent])));
+
+  Widget _glassCircle(double s, Color c) => Container(
+    width: s, height: s, 
+    decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [c, Colors.transparent]))
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -286,8 +288,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
           _header(),
           _compactMainRow(),
           _statusBadge(statusCol, isCharging ? "CARICA IN CORSO" : (isWaiting ? "IN ATTESA" : "SISTEMA OFF")),
-          const SizedBox(height: 15),
-          _liquidBatterySection(currentSoc), 
+          const SizedBox(height: 25),
+          _premiumBatterySection(currentSoc), 
           _energyEstimates(),
           _paramSliders(), 
           const Spacer(),
@@ -320,32 +322,78 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     Text(d != null ? DateFormat('HH:mm').format(d) : "--:--", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: c)),
   ]);
 
-  Widget _liquidBatterySection(double soc) {
+  // --- SEZIONE BATTERIA PREMIUM TECH CON PULSAR E DOPPIO DECIMALE ---
+  Widget _premiumBatterySection(double soc) {
     Color batteryColor = soc > 80 ? Colors.greenAccent : (soc > 30 ? Colors.cyanAccent : Colors.orangeAccent);
-    return Column(children: [
-      Container(
-        height: 60, padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)),
-        child: Row(children: List.generate(10, (i) {
-          bool active = soc >= (i + 1) * 10 - 5;
-          return Expanded(child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              gradient: active ? LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [batteryColor.withOpacity(0.7), batteryColor.withOpacity(0.3)]) : null,
-              color: active ? null : Colors.white.withOpacity(0.05),
-            ),
-          ));
-        })),
+    return Container(
+      height: 115,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.black54,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white12),
+        boxShadow: [BoxShadow(color: batteryColor.withOpacity(0.04), blurRadius: 40)],
       ),
-      const SizedBox(height: 6),
-      Text("${soc.toStringAsFixed(2).replaceFirst('.', ',')}%", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: batteryColor)),
-    ]);
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            Container(color: const Color(0xFF040D12)),
+            
+            // Painter con Effetto Pulsar
+            AnimatedBuilder(
+              animation: _bgController,
+              builder: (context, child) => CustomPaint(
+                size: const Size(double.infinity, 115),
+                painter: TechFlowPainter(
+                  soc / 100, 
+                  batteryColor, 
+                  _bgController.value,
+                  isActive // Pulsar attivo se il sistema è ON
+                ),
+              ),
+            ),
+            
+            // Riflesso Glass
+            Positioned(
+              top: 0, left: 0, right: 0,
+              child: Container(
+                height: 55,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.white.withOpacity(0.07), Colors.transparent],
+                  ),
+                ),
+              ),
+            ),
+            
+            // Testo SoC con doppio decimale
+            Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    soc.toStringAsFixed(2).replaceFirst('.', ','),
+                    style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w200, color: Colors.white, letterSpacing: -1),
+                  ),
+                  const SizedBox(width: 4),
+                  const Text("%", style: TextStyle(fontSize: 20, color: Colors.white38, fontWeight: FontWeight.w400)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _energyEstimates() {
     double kwh = (((socTarget - currentSoc) / 100) * batteryCap).clamp(0, 500);
-    return Padding(padding: const EdgeInsets.symmetric(vertical: 15), child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 20), child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
       _infoLabel("DA CARICARE", "${kwh.toStringAsFixed(1)} kWh", Colors.orangeAccent),
       _infoLabel("COSTO STIMATO", "€ ${(kwh * costPerKwh).toStringAsFixed(2)}", Colors.greenAccent),
     ]));
@@ -425,7 +473,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
             else { socTarget = val.toDouble(); }
             _recalcSchedule();
           }); 
-          // PERSISTENZA IMMEDIATA
           final prefs = await SharedPreferences.getInstance();
           if (start) { prefs.setDouble('soc_s', socStart); } else { prefs.setDouble('soc_t', socTarget); }
           st(() {}); 
@@ -438,7 +485,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
               else { socTarget = v.roundToDouble(); }
               _recalcSchedule();
             }); 
-            // PERSISTENZA IMMEDIATA
             final prefs = await SharedPreferences.getInstance();
             if (start) { prefs.setDouble('soc_s', socStart); } else { prefs.setDouble('soc_t', socTarget); }
             st(() {}); 
@@ -451,7 +497,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
             else { socTarget = val.toDouble(); }
             _recalcSchedule();
           }); 
-          // PERSISTENZA IMMEDIATA
           final prefs = await SharedPreferences.getInstance();
           if (start) { prefs.setDouble('soc_s', socStart); } else { prefs.setDouble('soc_t', socTarget); }
           st(() {}); 
@@ -499,7 +544,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
         Expanded(child: ListView.builder(itemCount: filtered.length, itemBuilder: (c, i) => Dismissible(
           key: Key(filtered[i]['date']),
           direction: DismissDirection.endToStart,
-          background: Container(color: Colors.redAccent, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 0), child: const Icon(Icons.delete, color: Colors.white)),
+          background: Container(color: Colors.redAccent, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), child: const Icon(Icons.delete, color: Colors.white)),
           onDismissed: (dir) => _deleteCharge(history.indexOf(filtered[i])),
           child: ListTile(
             title: Text(DateFormat('dd/MM HH:mm').format(DateTime.parse(filtered[i]['date']))),
@@ -510,4 +555,82 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       ]));
     }));
   }
+}
+
+// --- TECH FLOW PAINTER CON EFFETTO PULSAR ---
+class TechFlowPainter extends CustomPainter {
+  final double pct;
+  final Color color;
+  final double anim;
+  final bool isPulsing;
+
+  TechFlowPainter(this.pct, this.color, this.anim, this.isPulsing);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double currentWidth = size.width * pct;
+    
+    // Calcolo opacità Pulsar (varia tra 0.3 e 0.7 se attivo)
+    double pulsarOpacity = 0.5;
+    if (isPulsing) {
+      pulsarOpacity = 0.4 + (math.sin(anim * 2 * math.pi) * 0.2);
+    }
+
+    // 1. Corpo della carica con gradiente e pulsar
+    Paint fillPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [
+          color.withOpacity(pulsarOpacity * 0.8),
+          color.withOpacity(pulsarOpacity),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, currentWidth, size.height));
+    
+    canvas.drawRect(Rect.fromLTWH(0, 0, currentWidth, size.height), fillPaint);
+
+    // 2. Glow Scanner (Attivo solo durante il flusso)
+    if (isPulsing && pct > 0) {
+      final double scanPos = (anim * currentWidth * 1.8) - (currentWidth * 0.4);
+      
+      Paint scanPaint = Paint()
+        ..shader = LinearGradient(
+          colors: [
+            Colors.transparent,
+            Colors.white.withOpacity(0.2),
+            Colors.transparent,
+          ],
+        ).createShader(Rect.fromLTWH(scanPos, 0, 60, size.height));
+
+      canvas.drawRect(
+        Rect.fromLTWH(scanPos.clamp(0, currentWidth - 60), 0, 60, size.height), 
+        scanPaint
+      );
+    }
+
+    // 3. Leading Glow & Edge Line
+    if (pct > 0.005) {
+      Paint edgeGlow = Paint()
+        ..color = color.withOpacity(isPulsing ? (0.6 + math.sin(anim * 2 * math.pi) * 0.2) : 0.6)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+      
+      canvas.drawRect(
+        Rect.fromLTWH(currentWidth - 2, 2, 4, size.height - 4),
+        edgeGlow
+      );
+
+      Paint edgeLine = Paint()
+        ..color = Colors.white.withOpacity(0.9)
+        ..strokeWidth = 1.5;
+      
+      canvas.drawLine(
+        Offset(currentWidth, 0),
+        Offset(currentWidth, size.height),
+        edgeLine
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
 }
