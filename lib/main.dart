@@ -11,6 +11,154 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
+const Map<String, Map<String, String>> localizedValues = {
+  'it': {
+    'start': 'INIZIO', 
+    'end': 'FINE', 
+    'target': 'TARGET', 
+    'status_off': 'SISTEMA OFF',
+    'status_wait': 'IN ATTESA', 
+    'status_charging': 'IN CARICA', 
+    'settings': 'IMPOSTAZIONI',
+    'priority': 'Priorità Batteria', 
+    'priorita_sottotitolo': 'Completa la carica anche se l\'orario è scaduto',
+    'save': 'SALVA', 
+    'history': 'CRONOLOGIA',
+    'summary': 'RIEPILOGO',
+    'energy': 'Energia',
+    'cost': 'Costo',
+    'discard': 'SCARTA',
+    'save_partial': 'SALVA PARZIALE',
+    'save_total': 'SALVA TOTALE',
+    'da_caricare': 'DA CARICARE',
+    'costo_stimato': 'COSTO STIMATO',
+    'potenza_wallbox': 'POTENZA WALLBOX',
+    'capacita_batteria': 'CAPACITÀ BATTERIA',
+    'btn_stop': 'STOP SISTEMA',
+    'btn_attiva': 'ATTIVA SMART CHARGE',
+    'lingua': 'Lingua',
+    'costo_kwh': 'COSTO €/kWh',
+    'potenza_kw': 'POTENZA kW',
+    'capacita_kwh': 'CAPACITÀ kWh',
+    'analisi_consumi': 'ANALISI CONSUMI',
+    'inserimento_manuale': 'INSERIMENTO MANUALE',
+    'conferma_titolo': 'CONFERMA',
+    'elimina_messaggio': 'Vuoi davvero eliminare questa sessione?',
+    'elimina_bottone': 'ELIMINA',
+    'annulla': 'ANNULLA',
+    'domanda_salva': 'Vuoi salvare questa ricarica nel log?',
+  },
+  'en': {
+    'start': 'START', 
+    'end': 'END', 
+    'target': 'TARGET', 
+    'status_off': 'SYSTEM OFF',
+    'status_wait': 'WAITING', 
+    'status_charging': 'CHARGING', 
+    'settings': 'SETTINGS',
+    'priority': 'Battery Priority', 
+    'priorita_sottotitolo': 'Complete charge even if time expired',
+    'save': 'SAVE', 
+    'history': 'HISTORY',
+    'summary': 'SUMMARY',
+    'energy': 'Energy',
+    'cost': 'Cost',
+    'discard': 'DISCARD',
+    'save_partial': 'PARTIAL SAVE',
+    'save_total': 'TOTAL SAVE',
+    'da_caricare': 'TO CHARGE',
+    'costo_stimato': 'EST. COST',
+    'potenza_wallbox': 'WALLBOX POWER',
+    'capacita_batteria': 'BATTERY CAPACITY',
+    'btn_stop': 'STOP SYSTEM',
+    'btn_attiva': 'ACTIVATE SMART CHARGE',
+    'lingua': 'Language',
+    'costo_kwh': 'COST €/kWh',
+    'potenza_kw': 'POWER kW',
+    'capacita_kwh': 'CAPACITY kWh',
+    'analisi_consumi': 'CONSUMPTION ANALYSIS',
+    'inserimento_manuale': 'MANUAL ENTRY',
+    'conferma_titolo': 'CONFIRM',
+    'elimina_messaggio': 'Do you really want to delete this session?',
+    'elimina_bottone': 'DELETE',
+    'annulla': 'CANCEL',
+    'domanda_salva': 'Do you want to save this charge to the log?',
+  },
+  'fr': {
+    'start': 'DÉBUT', 
+    'end': 'FIN', 
+    'target': 'CIBLE', 
+    'status_off': 'SYSTÈME OFF',
+    'status_wait': 'EN ATTENTE', 
+    'status_charging': 'EN CHARGE', 
+    'settings': 'PARAMÈTRES',
+    'priority': 'Priorité Batterie', 
+    'priorita_sottotitolo': 'Terminer la charge même se le temps est écoulé',
+    'save': 'ENREGISTRER', 
+    'history': 'HISTORIQUE',
+    'summary': 'RÉSUMÉ',
+    'energy': 'Énergie',
+    'cost': 'Coût',
+    'discard': 'ABANDONNER',
+    'save_partial': 'SAUVEGARDE PARTIELLE',
+    'save_total': 'SAUVEGARDE TOTALE',
+    'da_caricare': 'À CHARGER',
+    'costo_stimato': 'COÛT ESTIMÉ',
+    'potenza_wallbox': 'PUISSANCE WALLBOX',
+    'capacita_batteria': 'CAPACITÉ BATTERIE',
+    'btn_stop': 'ARRÊTER LE SYSTÈME',
+    'btn_attiva': 'ACTIVER SMART CHARGE',
+    'lingua': 'Langue',
+    'costo_kwh': 'COÛT €/kWh',
+    'potenza_kw': 'PUISSANCE kW',
+    'capacita_kwh': 'CAPACITÉ kWh',
+    'analisi_consumi': 'ANALYSE DE CONSOMMATION',
+    'inserimento_manuale': 'SAISIE MANUELLE',
+    'conferma_titolo': 'CONFIRMATION',
+    'elimina_messaggio': 'Voulez-vous vraiment supprimer cette session ?',
+    'elimina_bottone': 'SUPPRIMER',
+    'annulla': 'ANNULER',
+    'domanda_salva': 'Voulez-vous enregistrer cette charge dans le journal?',
+  },
+  'de': {
+    'start': 'START', 
+    'end': 'ENDE', 
+    'target': 'ZIEL', 
+    'status_off': 'SYSTEM AUS',
+    'status_wait': 'WARTEN', 
+    'status_charging': 'LÄDT', 
+    'settings': 'EINSTELLUNGEN',
+    'priority': 'Batteriepriorität', 
+    'priorita_sottotitolo': 'Ladevorgang beenden, auch wenn Zeit abgelaufen ist',
+    'save': 'SPEICHERN', 
+    'history': 'VERLAUF',
+    'summary': 'ZUSAMMENFASSUNG',
+    'energy': 'Energie',
+    'cost': 'Kosten',
+    'discard': 'VERWERFEN',
+    'save_partial': 'TEILSAVE',
+    'save_total': 'VOLLSAVE',
+    'da_caricare': 'ZU LADEN',
+    'costo_stimato': 'KOSTENSCHÄTZUNG',
+    'potenza_wallbox': 'WALLBOX LEISTUNG',
+    'capacita_batteria': 'BATTERIEKAPAZITÄT',
+    'btn_stop': 'SYSTEM STOPPEN',
+    'btn_attiva': 'SMART CHARGE AKTIVIEREN',
+    'lingua': 'Sprache',
+    'costo_kwh': 'KOSTEN €/kWh',
+    'potenza_kw': 'LEISTUNG kW',
+    'capacita_kwh': 'KAPAZITÄT kWh',
+    'analisi_consumi': 'VERBRAUCHSANALYSE',
+    'inserimento_manuale': 'MANUELLE EINGABE',
+    'conferma_titolo': 'BESTÄTIGEN',
+    'elimina_messaggio': 'Möchten Sie diese Sitzung wirklich löschen?',
+    'elimina_bottone': 'LÖSCHEN',
+    'annulla': 'ABBRECHEN',
+    'domanda_salva': 'Möchten Sie questa ricarica im Log speichern?',
+  },
+};
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('it_IT', null);
@@ -53,8 +201,12 @@ class Dashboard extends StatefulWidget {
 }
 
 class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
+  String currentLang = 'it'; // Default
   String userId = "";
   String selectedVehicle = "Manuale / Altro";
+  String t(String key) {
+  return localizedValues[currentLang]?[key] ?? key;
+}
   List<Map<String, dynamic>> remoteEvDatabase = []; 
   
   double batteryCap = 44.0; 
@@ -252,8 +404,9 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   final prefs = await SharedPreferences.getInstance();
   userId = prefs.getString('uid') ?? const Uuid().v4();
   selectedVehicle = prefs.getString('vehicleName') ?? "Manuale / Altro";
-  
+  currentLang = prefs.getString('lang') ?? 'it';
   setState(() {
+    currentLang = prefs.getString('lingua_scelta') ?? 'it';
     batteryCap = (prefs.getDouble('cap') ?? 44.0);
     wallboxPwr = (prefs.getDouble('pwr') ?? 3.7).clamp(1.5, 11.0);
     costPerKwh = prefs.getDouble('cost') ?? 0.25;
@@ -351,16 +504,16 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
             children: [
               Icon(Icons.bolt, color: Colors.cyanAccent),
               SizedBox(width: 10),
-              Text("RIEPILOGO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              Text(t('summary'), style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildSummaryRow("Energia", "${kwh.toStringAsFixed(2)} kWh"),
-              _buildSummaryRow("Costo", "€ ${cost.toStringAsFixed(2)}"),
+              _buildSummaryRow(t('energy'), "${kwh.toStringAsFixed(2)} kWh"),
+              _buildSummaryRow(t('cost'), "€ ${cost.toStringAsFixed(2)}"),
               const SizedBox(height: 20),
-              const Text("Vuoi salvare questa ricarica nel log?", 
+              const Text(t('domanda_salva'), 
                 style: TextStyle(color: Colors.white70, fontSize: 14)),
             ],
           ),
@@ -370,7 +523,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                 Navigator.pop(context);
                 _resetAfterSession(tot); // Resetta l'interfaccia senza salvare
               },
-              child: const Text("SCARTA", style: TextStyle(color: Colors.white38)),
+              child: const Text(t('annulla'), style: TextStyle(color: Colors.white38)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
@@ -442,14 +595,14 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       return AlertDialog(
         backgroundColor: const Color(0xFF0A141D),
         title: const Text("CONFERMA", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-        content: const Text("Vuoi davvero eliminare questa sessione?"),
+        content: const Text(t('elimina_messaggio')),
         actions: [
           TextButton(
             onPressed: () {
               confirm = false; 
               Navigator.of(dialogContext).pop();
             },
-            child: const Text("ANNULLA", style: TextStyle(color: Colors.white54)),
+            child: const Text(t('annulla'), style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -464,7 +617,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
               await prefs.setString('logs', jsonEncode(history));
               _forceFirebaseSync();
             },
-            child: const Text("ELIMINA", style: TextStyle(color: Colors.white)),
+            child: const Text(t('elimina_bottone'), style: TextStyle(color: Colors.white)),
           ),
         ],
       );
@@ -501,7 +654,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
         SafeArea(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
           _header(),
           _compactMainRow(),
-          _statusBadge(statusCol, isCharging ? "CARICA IN CORSO" : (isWaiting ? "IN ATTESA" : "SISTEMA OFF")),
+          _statusBadge(statusCol, isCharging ? t('status_charging') : (isWaiting ? t('status_wait') : t('status_off'))),
           const SizedBox(height: 25),
           _premiumBatterySection(currentSoc), 
           _energyEstimates(),
@@ -524,13 +677,13 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   Widget _compactMainRow() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
     // MODIFICA QUI: Se attivo usa l'ora bloccata, se spento usa quella calcolata
-    _dateCol("INIZIO CARICA", isActive ? lockedStartDate : fullStartDate, isWaiting ? Colors.orangeAccent : Colors.white24),
+    _dateCol(t('start'), isActive ? lockedStartDate : fullStartDate, isWaiting ? Colors.orangeAccent : Colors.white24),
     
     Column(children: [
       Text(DateFormat('HH:mm').format(now), style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w100, fontFamily: 'monospace')),
       Text(DateFormat('EEE d MMM').format(now).toUpperCase(), style: const TextStyle(fontSize: 10, color: Colors.white38)),
     ]),
-    _dateCol("FINE CARICA", fullEndDate, Colors.cyanAccent),
+    _dateCol(t('end'), fullEndDate, Colors.cyanAccent),
   ]);
 
   Widget _dateCol(String t, DateTime? d, Color c) => Column(children: [
@@ -559,8 +712,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   Widget _energyEstimates() {
     double kwh = (((socTarget - currentSoc) / 100) * batteryCap).clamp(0.0, 500.0);
     return Padding(padding: const EdgeInsets.symmetric(vertical: 20), child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-      _infoLabel("DA CARICARE", "${kwh.toStringAsFixed(1)} kWh", Colors.orangeAccent),
-      _infoLabel("COSTO STIMATO", "€ ${(kwh * costPerKwh).toStringAsFixed(2)}", Colors.greenAccent),
+      _infoLabel(t('da_caricare'), "${kwh.toStringAsFixed(1)} kWh", Colors.orangeAccent),
+      _infoLabel(t('costo_stimato'), "€ ${(kwh * costPerKwh).toStringAsFixed(2)}", Colors.greenAccent),
     ]));
   }
 
@@ -568,9 +721,9 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   Widget _statusBadge(Color col, String text) => Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(color: col.withOpacity(0.1), borderRadius: BorderRadius.circular(20), border: Border.all(color: col.withOpacity(0.2))), child: Text(text, style: TextStyle(color: col, fontSize: 10, fontWeight: FontWeight.bold)));
 
   Widget _paramSliders() => Column(children: [
-    _sliderRow("POTENZA WALLBOX", "${wallboxPwr.toStringAsFixed(1)} kW", wallboxPwr, 1.5, 11.0, 0.1, Colors.orangeAccent, (v) => _updateParams(pwr: v)),
+    _sliderRow(t('potenza_wallbox'), "${wallboxPwr.toStringAsFixed(1)} kW", wallboxPwr, 1.5, 11.0, 0.1, Colors.orangeAccent, (v) => _updateParams(pwr: v)),
     const SizedBox(height: 10),
-    _sliderRowWithAction("CAPACITÀ BATTERIA", "${batteryCap.toStringAsFixed(1)} kWh", batteryCap, 10, 150, 0.1, Colors.cyanAccent, (v) => _updateParams(cap: v), _showVehicleSelector),
+    _sliderRowWithAction(t('capacita_batteria'), "${batteryCap.toStringAsFixed(1)} kWh", batteryCap, 10, 150, 0.1, Colors.cyanAccent, (v) => _updateParams(cap: v), _showVehicleSelector),
     Padding(
       padding: const EdgeInsets.only(top: 15),
       child: Center(
@@ -631,24 +784,24 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   Widget _touchControl(String l, String v, VoidCallback t) => InkWell(onTap: t, child: Column(children: [Text(l, style: const TextStyle(fontSize: 9, color: Colors.white38)), Text(v, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.cyanAccent))]));
 
   Widget _actionButtons() => Column(children: [
-    SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: _toggleSystem, style: ElevatedButton.styleFrom(backgroundColor: isActive ? Colors.redAccent : Colors.cyanAccent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text(isActive ? "STOP SISTEMA" : "ATTIVA SMART CHARGE", style: const TextStyle(fontWeight: FontWeight.w900)))),
+    SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: _toggleSystem, style: ElevatedButton.styleFrom(backgroundColor: isActive ? Colors.redAccent : Colors.cyanAccent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text(isActive ? t('btn_stop') : t('btn_attiva'), style: const TextStyle(fontWeight: FontWeight.w900)))),
     const SizedBox(height: 10),
     Row(children: [
-      Expanded(child: OutlinedButton(onPressed: () => _save(false), child: const Text("SALVA PARZIALE"))),
+      Expanded(child: OutlinedButton(onPressed: () => _save(false), child: const Text(t('save_partial')))),
       const SizedBox(width: 10),
-      Expanded(child: ElevatedButton(onPressed: () => _save(true), style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black), child: const Text("SALVA TOTALE"))),
+      Expanded(child: ElevatedButton(onPressed: () => _save(true), style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black), child: const Text(t('save_total')))),
     ]),
   ]);
 
   void _showSettings() {
     showDialog(context: context, builder: (c) => AlertDialog(
       backgroundColor: const Color(0xFF0A141D),
-      title: const Text("CONFIGURAZIONE"),
+      title: const Text(t('settings')),
       content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
         // Dentro la Column del Dialog delle impostazioni
 SwitchListTile(
   title: const Text("Priorità Batteria", style: TextStyle(fontSize: 14)),
-  subtitle: const Text("Completa la carica anche se l'orario è scaduto", style: TextStyle(fontSize: 11)),
+  subtitle: const Text(t('priorita_sottotitolo'), style: TextStyle(fontSize: 11)),
   value: priorityBattery,
   activeColor: Colors.cyanAccent,
   onChanged: (bool value) async {
@@ -657,9 +810,39 @@ SwitchListTile(
     prefs.setBool('priorityBattery', value);
   },
 ),
-        _settingField("COSTO €/kWh", _costCtrl),
-        _settingField("POWER kW", _pwrCtrl),
-        _settingField("CAPACITY kWh", _capCtrl),
+        // Dentro la Column del Dialog impostazioni
+ListTile(
+  leading: const Icon(Icons.language, color: Colors.cyanAccent),
+  title: const Text("Lingua / Language"),
+  trailing: DropdownButton<String>(
+    value: currentLang,
+    items: const [
+      DropdownMenuItem(value: 'it', child: Text("🇮🇹 IT")),
+      DropdownMenuItem(value: 'en', child: Text("🇺🇸 EN")),
+      DropdownMenuItem(value: 'fr', child: Text("🇫🇷 FR")),
+      DropdownMenuItem(value: 'de', child: Text("🇩🇪 DE")),
+    ],
+    onChanged: (String? nuovoValore) async {
+  if (nuovoValore != null) {
+    // 1. Aggiorna l'interfaccia subito
+    setState(() {
+      currentLang = nuovoValore;
+    });
+
+    // 2. SALVA la scelta permanentemente
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('lingua_scelta', nuovoValore);
+
+    // Chiudi e riapri il menu per aggiornare i testi
+    Navigator.pop(context);
+    _showSettings();
+  }
+},
+  ),
+),
+        _settingField(t('costo_kwh'), _costCtrl),
+        _settingField(t('potenza_kw'), _pwrCtrl),
+        _settingField(t('capacita_kwh'), _capCtrl),
         const SizedBox(height: 10),
         Row(children: [
           Expanded(child: TextField(controller: _uidCtrl, decoration: const InputDecoration(labelText: "USER ID"), style: const TextStyle(fontSize: 10, fontFamily: 'monospace'))),
@@ -735,7 +918,7 @@ SwitchListTile(
     final TextEditingController kwhCtrl = TextEditingController();
     showDialog(context: context, builder: (c) => StatefulBuilder(builder: (c, st) => AlertDialog(
       backgroundColor: const Color(0xFF0A141D),
-      title: const Text("INSERIMENTO MANUALE", style: TextStyle(color: Colors.cyanAccent, fontSize: 16)),
+      title: const Text(t('inserimento_manuale'), style: TextStyle(color: Colors.cyanAccent, fontSize: 16)),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
         ListTile(title: Text(DateFormat('dd/MM/yyyy').format(manualDate)), leading: const Icon(Icons.calendar_today), onTap: () async { final d = await showDatePicker(context: context, initialDate: manualDate, firstDate: DateTime(2020), lastDate: DateTime.now()); if(d != null) st(() => manualDate = d); }),
         ListTile(title: Text(manualTime.format(context)), leading: const Icon(Icons.access_time), onTap: () async { final t = await showTimePicker(context: context, initialTime: manualTime); if(t != null) st(() => manualTime = t); }),
@@ -775,7 +958,7 @@ SwitchListTile(
             const SizedBox(height: 15), 
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
             Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text("ANALISI CONSUMI", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.cyanAccent)),
+              const Text(t('analisi_consumi'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.cyanAccent)),
               Row(children: [
                 IconButton(icon: const Icon(Icons.add_circle_outline, color: Colors.cyanAccent), onPressed: () => _showManualEntry(setModal)),
                 IconButton(icon: const Icon(Icons.download, color: Colors.greenAccent), onPressed: _exportCSV),
