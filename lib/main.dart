@@ -313,38 +313,51 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 
   void _deleteCharge(int index) async {
-  // 1. Mostra il dialogo di conferma
+  // Rimuoviamo subito ogni snackbar residua per pulizia
+  ScaffoldMessenger.of(context).clearSnackBars();
+
   showDialog(
     context: context,
+    barrierDismissible: false, // L'utente deve per forza premere un tasto
     builder: (BuildContext context) {
       return AlertDialog(
         backgroundColor: const Color(0xFF0A141D),
-        title: const Text("CONFERMA ELIMINAZIONE", style: TextStyle(color: Colors.redAccent, fontSize: 16, fontWeight: FontWeight.bold)),
-        content: const Text("Vuoi davvero eliminare questa sessione di ricarica? L'azione non può essere annullata."),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white10)),
+        title: const Text("CONFERMA", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+        content: const Text("Vuoi davvero eliminare questa sessione?"),
         actions: [
-          // Tasto per annullare (chiude solo il pop-up)
+          // TASTO ANNULLA: Chiude solo il dialogo, non fa nulla ai dati
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("ANNULLA", style: TextStyle(color: Colors.white38)),
+            onPressed: () {
+              Navigator.of(context).pop(); 
+            },
+            child: const Text("ANNULLA", style: TextStyle(color: Colors.white54)),
           ),
-          // Tasto per eliminare (esegue l'azione)
+          // TASTO ELIMINA: Chiude il dialogo E cancella i dati
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent.withOpacity(0.8),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
             onPressed: () async {
-              // Chiude il dialogo
-              Navigator.pop(context);
+              // 1. Chiudi il dialogo prima di tutto
+              Navigator.of(context).pop();
               
-              // Esegue l'eliminazione effettiva
-              setState(() => history.removeAt(index));
-              
+              // 2. SOLO ORA modifichiamo lo stato e i dati
+              setState(() {
+                history.removeAt(index);
+              });
+
+              // 3. Persistenza (Locale + Cloud)
               final prefs = await SharedPreferences.getInstance();
-              prefs.setString('logs', jsonEncode(history));
+              await prefs.setString('logs', jsonEncode(history));
               _forceFirebaseSync();
-              
-              // Feedback visivo finale
+
+              // 4. Feedback finale
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text("Ricarica rimossa correttamente"),
+                  content: Text("Sessione eliminata"),
                   duration: Duration(seconds: 2),
                 ),
               );
@@ -355,7 +368,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       );
     },
   );
-}
+}  
 
   void _showSnack(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: isError ? Colors.redAccent : const Color(0xFF101A26)));
