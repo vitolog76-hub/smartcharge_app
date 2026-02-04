@@ -404,13 +404,13 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   Widget _compactMainRow() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
     // MODIFICA QUI: Se attivo usa l'ora bloccata, se spento usa quella calcolata
-    _dateCol("INIZIO", isActive ? lockedStartDate : fullStartDate, isWaiting ? Colors.orangeAccent : Colors.white24),
+    _dateCol("INIZIO CARICA", isActive ? lockedStartDate : fullStartDate, isWaiting ? Colors.orangeAccent : Colors.white24),
     
     Column(children: [
       Text(DateFormat('HH:mm').format(now), style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w100, fontFamily: 'monospace')),
       Text(DateFormat('EEE d MMM').format(now).toUpperCase(), style: const TextStyle(fontSize: 10, color: Colors.white38)),
     ]),
-    _dateCol("FINE", fullEndDate, Colors.cyanAccent),
+    _dateCol("FINE CARICA", fullEndDate, Colors.cyanAccent),
   ]);
 
   Widget _dateCol(String t, DateTime? d, Color c) => Column(children: [
@@ -514,9 +514,9 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: _toggleSystem, style: ElevatedButton.styleFrom(backgroundColor: isActive ? Colors.redAccent : Colors.cyanAccent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text(isActive ? "STOP SISTEMA" : "ATTIVA SMART CHARGE", style: const TextStyle(fontWeight: FontWeight.w900)))),
     const SizedBox(height: 10),
     Row(children: [
-      Expanded(child: OutlinedButton(onPressed: () => _save(false), child: const Text("SAVE PARTIAL"))),
+      Expanded(child: OutlinedButton(onPressed: () => _save(false), child: const Text("SALVA PARZIALE"))),
       const SizedBox(width: 10),
-      Expanded(child: ElevatedButton(onPressed: () => _save(true), style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black), child: const Text("SAVE TOTAL"))),
+      Expanded(child: ElevatedButton(onPressed: () => _save(true), style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black), child: const Text("SALVA TOTALE"))),
     ]),
   ]);
 
