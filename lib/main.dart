@@ -74,7 +74,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   bool isActive = false;
   bool isWaiting = false;
   bool isCharging = false;
-
+  bool priorityBattery = true; // Di default diamo priorità alla carica completa
   Timer? _clockTimer;
   DateTime? _lastTick;
   late AnimationController _bgController;
@@ -158,22 +158,21 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     _recalcSchedule();
     
     if (isActive) {
-      // 1. PRIORITÀ ASSOLUTA: IL TARGET
+      // 1. TARGET RAGGIUNTO: Stop sempre e comunque
       if (currentSoc >= socTarget) {
         _toggleSystem();
-        _vibrateFinish(); // Funzione per la vibrazione
+        _vibrateFinish();
         _save(true);
         return;
       }
 
-      // 2. CONTROLLO ORARIO (con tolleranza)
-      // Se è passata l'ora di fine MA siamo vicinissimi al target (es. > 79.5%), 
-      // continuiamo a caricare finché non arriviamo all'80% preciso.
+      // 2. CONTROLLO ORARIO
       if (now.isAfter(fullEndDate!)) {
-        // Se mancano meno di 0.5% al target, non spegnere, continua!
-        bool isCloseToTarget = (socTarget - currentSoc) < 0.5;
-        
-        if (!isCloseToTarget) {
+        // Se l'interruttore è attivo, aspettiamo di arrivare al target
+        if (priorityBattery) {
+           // Continua a caricare... 
+        } else {
+          // Se l'interruttore è spento, stacca subito all'orario preciso
           _toggleSystem();
           _vibrateFinish();
           _save(false);
@@ -191,9 +190,9 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       }
     }
   }
-  
+
+  // Funzione per la vibrazione tripla
   void _vibrateFinish() async {
-    // Vibrazione tripla per avvisare della fine ricarica
     for (int i = 0; i < 3; i++) {
       HapticFeedback.heavyImpact();
       await Future.delayed(const Duration(milliseconds: 300));
@@ -218,12 +217,12 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       double socAdded = (kwhAdded / batteryCap) * 100;
       setState(() { 
         energySession += kwhAdded; 
-        // Permettiamo un micro-arrotondamento finale per evitare che si fermi a 79.99
         double nextSoc = currentSoc + socAdded;
-        if (nextSoc > (socTarget - 0.01) && nextSoc < (socTarget + 0.05)) {
+        // Se mancano meno di 0.02% lo consideriamo pieno (evita 79.99%)
+        if (nextSoc > (socTarget - 0.02)) {
           currentSoc = socTarget;
         } else {
-          currentSoc = nextSoc.clamp(0.0, 100.0);
+          currentSoc = nextSoc;
         }
       });
       prefs.setDouble('currentSoc', currentSoc);
@@ -262,7 +261,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     isActive = prefs.getBool('isActive') ?? false;
     currentSoc = prefs.getDouble('currentSoc') ?? socStart;
     energySession = prefs.getDouble('energySession') ?? 0.0;
-    
+    // Dentro _loadData
+    priorityBattery = prefs.getBool('priorityBattery') ?? true;
     // RECUPERO ORA CONGELATA
     String? lockedStr = prefs.getString('lockedStartDate');
     if (lockedStr != null) lockedStartDate = DateTime.parse(lockedStr);
@@ -643,6 +643,18 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       backgroundColor: const Color(0xFF0A141D),
       title: const Text("CONFIGURAZIONE"),
       content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        // Dentro la Column del Dialog delle impostazioni
+SwitchListTile(
+  title: const Text("Priorità Batteria", style: TextStyle(fontSize: 14)),
+  subtitle: const Text("Completa la carica anche se l'orario è scaduto", style: TextStyle(fontSize: 11)),
+  value: priorityBattery,
+  activeColor: Colors.cyanAccent,
+  onChanged: (bool value) async {
+    setState(() { priorityBattery = value; });
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool('priorityBattery', value);
+  },
+),
         _settingField("COSTO €/kWh", _costCtrl),
         _settingField("POWER kW", _pwrCtrl),
         _settingField("CAPACITY kWh", _capCtrl),
