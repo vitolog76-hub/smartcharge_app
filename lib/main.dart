@@ -163,10 +163,25 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       } else if (now.isBefore(fullStartDate!)) {
         if (!isWaiting) setState(() { isWaiting = true; isCharging = false; });
         _lastTick = now;
-      } else if (currentSoc >= socTarget) { _toggleSystem(); _save(true); }
+      } 
+      // MODIFICA QUI: Quando raggiunge il target
+      else if (currentSoc >= socTarget) { 
+        _stopSystemAuto(); // Chiamiamo una nuova funzione
+      }
     }
   }
-
+  void _stopSystemAuto() {
+    HapticFeedback.heavyImpact(); // Vibrazione forte: carica finita!
+    _clockTimer?.cancel();
+    setState(() {
+      isActive = false;
+      isCharging = false;
+      isWaiting = false;
+    });
+    // Lanciamo il riepilogo con 'tot: true' perché ha completato la carica target
+    _save(true); 
+  }
+  
   void _processCharging() async {
     final nowCharge = DateTime.now();
     final prefs = await SharedPreferences.getInstance();

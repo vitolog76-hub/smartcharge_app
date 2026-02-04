@@ -286,18 +286,94 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 }
 
   void _save(bool tot) async {
-    double kwh = tot ? (((socTarget - socStart)/100)*batteryCap) : energySession;
+    // 1. Calcoliamo i dati della ricarica prima di resettare
+    double kwh = tot ? (((socTarget - socStart) / 100) * batteryCap) : energySession;
     if (kwh < 0) kwh = 0;
-    _addLogEntry(DateTime.now(), kwh);
-    setState(() { 
-      if(tot) currentSoc = socTarget; 
-      energySession = 0; isActive = false; isCharging = false; isWaiting = false; _lastTick = null;
+    double cost = kwh * costPerKwh;
+    DateTime sessionDate = DateTime.now();
+
+    // 2. Mostriamo il pop-up di riepilogo
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0A141D),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Colors.white10),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.bolt, color: Colors.cyanAccent),
+              SizedBox(width: 10),
+              Text("RIEPILOGO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildSummaryRow("Energia", "${kwh.toStringAsFixed(2)} kWh"),
+              _buildSummaryRow("Costo", "€ ${cost.toStringAsFixed(2)}"),
+              const SizedBox(height: 20),
+              const Text("Vuoi salvare questa ricarica nel log?", 
+                style: TextStyle(color: Colors.white70, fontSize: 14)),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _resetAfterSession(tot); // Resetta l'interfaccia senza salvare
+              },
+              child: const Text("SCARTA", style: TextStyle(color: Colors.white38)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
+              onPressed: () {
+                Navigator.pop(context);
+                _addLogEntry(sessionDate, kwh); // Chiama la tua funzione esistente per salvare
+                _resetAfterSession(tot);
+              },
+              child: const Text("SALVA", style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Funzione di supporto per resettare l'interfaccia
+  void _resetAfterSession(bool tot) async {
+    setState(() {
+      if (tot) currentSoc = socTarget;
+      energySession = 0;
+      isActive = false;
+      isCharging = false;
+      isWaiting = false;
+      _lastTick = null;
+      lockedStartDate = null;
     });
     final prefs = await SharedPreferences.getInstance();
     prefs.setDouble('currentSoc', currentSoc);
     prefs.setDouble('energySession', 0.0);
     prefs.setBool('isActive', false);
     prefs.remove('last_timestamp');
+    prefs.remove('lockedStartDate');
+  }
+
+  // Widget per le righe del pop-up
+  Widget _buildSummaryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white54)),
+          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+        ],
+      ),
+    );
   }
 
   void _addLogEntry(DateTime date, double kwh) async {
