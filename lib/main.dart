@@ -312,64 +312,47 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     _showSnack("Salvato su Cloud!");
   }
 
-  void _deleteCharge(int index) async {
-  // Rimuoviamo subito ogni snackbar residua per pulizia
-  ScaffoldMessenger.of(context).clearSnackBars();
-
-  showDialog(
+  Future<bool> _showDeleteConfirmation(int index) async {
+  bool confirm = false;
+  
+  await showDialog(
     context: context,
-    barrierDismissible: false, // L'utente deve per forza premere un tasto
-    builder: (BuildContext context) {
+    barrierDismissible: false,
+    builder: (BuildContext dialogContext) { // Usiamo un nome diverso per il context del dialogo
       return AlertDialog(
         backgroundColor: const Color(0xFF0A141D),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20),side: const BorderSide(color: Colors.white10), // Usa 'side' invece di 'border'
-),
         title: const Text("CONFERMA", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
         content: const Text("Vuoi davvero eliminare questa sessione?"),
         actions: [
-          // TASTO ANNULLA: Chiude solo il dialogo, non fa nulla ai dati
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop(); 
+              confirm = false; 
+              Navigator.of(dialogContext).pop();
             },
             child: const Text("ANNULLA", style: TextStyle(color: Colors.white54)),
           ),
-          // TASTO ELIMINA: Chiude il dialogo E cancella i dati
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent.withOpacity(0.8),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () async {
-              // 1. Chiudi il dialogo prima di tutto
-              Navigator.of(context).pop();
-              
-              // 2. SOLO ORA modifichiamo lo stato e i dati
+              confirm = true; 
+              Navigator.of(dialogContext).pop();
+
               setState(() {
                 history.removeAt(index);
               });
-
-              // 3. Persistenza (Locale + Cloud)
               final prefs = await SharedPreferences.getInstance();
               await prefs.setString('logs', jsonEncode(history));
               _forceFirebaseSync();
-
-              // 4. Feedback finale
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Sessione eliminata"),
-                  duration: Duration(seconds: 2),
-                ),
-              );
             },
-            child: const Text("ELIMINA"),
+            child: const Text("ELIMINA", style: TextStyle(color: Colors.white)),
           ),
         ],
       );
     },
   );
-}  
+  
+  return confirm; 
+}
 
   void _showSnack(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: isError ? Colors.redAccent : const Color(0xFF101A26)));
@@ -694,17 +677,33 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                 Column(children: [const Text("KWH TOT", style: TextStyle(fontSize: 10, color: Colors.white38)), Text(totalKwh.toStringAsFixed(1), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.cyanAccent))]), 
                 Column(children: [const Text("SPESA TOT", style: TextStyle(fontSize: 10, color: Colors.white38)), Text("€ ${totalCost.toStringAsFixed(2)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.greenAccent))])
             ])),
-            Expanded(child: ListView.builder(itemCount: history.length, itemBuilder: (c, i) {
-                final item = history[i];
-                return Dismissible(
-                  key: Key(item['date'] + i.toString()), direction: DismissDirection.endToStart, 
-                  background: Container(alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), color: Colors.redAccent.withOpacity(0.2), child: const Icon(Icons.delete_outline, color: Colors.redAccent)),
-                  onDismissed: (direction) { _deleteCharge(i); setModal(() {}); },
-                  child: ListTile(
-                    leading: const Icon(Icons.bolt, color: Colors.white12), 
-                    title: Text(DateFormat('dd MMMM HH:mm', 'it_IT').format(DateTime.parse(item['date']))), 
-                    subtitle: Text("${item['kwh'].toStringAsFixed(2)} kWh"), 
-                    trailing: Text("€ ${item['cost'].toStringAsFixed(2)}", style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+            Expanded(
+  child: ListView.builder(
+    itemCount: history.length, 
+    itemBuilder: (c, i) {
+      final item = history[i];
+      return Dismissible(
+        key: Key(item['date'] + i.toString()), 
+        direction: DismissDirection.endToStart, 
+        background: Container(
+          alignment: Alignment.centerRight, 
+          padding: const EdgeInsets.only(right: 20), 
+          color: Colors.redAccent.withOpacity(0.2), 
+          child: const Icon(Icons.delete_outline, color: Colors.redAccent)
+        ),
+        // AGGIUNGI QUESTO BLOCCO: blocca l'animazione finché non confermi nel pop-up
+        confirmDismiss: (direction) async {
+          return await _showDeleteConfirmation(i); 
+        },
+        // Riduciamo onDismissed perché il lavoro grosso lo fa confirmDismiss
+        onDismissed: (direction) {
+          setModal(() {}); 
+        },
+        child: ListTile(
+          leading: const Icon(Icons.bolt, color: Colors.white12), 
+          title: Text(DateFormat('dd MMMM HH:mm', 'it_IT').format(DateTime.parse(item['date']))), 
+          subtitle: Text("${item['kwh'].toStringAsFixed(2)} kWh"), 
+          trailing: Text("€ ${item['cost'].toStringAsFixed(2)}", style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
                   ),
                 );
             }))
