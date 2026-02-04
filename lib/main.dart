@@ -158,21 +158,17 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     _recalcSchedule();
     
     if (isActive) {
-      // 1. TARGET RAGGIUNTO: Stop sempre e comunque
+      // 1. STOP PER TARGET RAGGIUNTO (Priorità 1)
       if (currentSoc >= socTarget) {
         _toggleSystem();
-        _vibrateFinish();
+        _vibrateFinish(); // Aggiungi questa funzione sotto
         _save(true);
         return;
       }
 
-      // 2. CONTROLLO ORARIO
-      if (now.isAfter(fullEndDate!)) {
-        // Se l'interruttore è attivo, aspettiamo di arrivare al target
-        if (priorityBattery) {
-           // Continua a caricare... 
-        } else {
-          // Se l'interruttore è spento, stacca subito all'orario preciso
+      // 2. STOP PER FINE TEMPO (Solo se l'interruttore Priorità Batteria è OFF)
+      if (now.isAfter(fullEndDate!) || now.isAtSameMomentAs(fullEndDate!)) {
+        if (!priorityBattery) {
           _toggleSystem();
           _vibrateFinish();
           _save(false);
@@ -190,15 +186,12 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       }
     }
   }
-
-  // Funzione per la vibrazione tripla
   void _vibrateFinish() async {
     for (int i = 0; i < 3; i++) {
       HapticFeedback.heavyImpact();
       await Future.delayed(const Duration(milliseconds: 300));
     }
   }
-
   void _processCharging() async {
     // Se siamo già al target, non fare nulla
     if (currentSoc >= socTarget) return;
@@ -233,13 +226,22 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 
   void _recalcSchedule() {
+    // Se sta caricando o è attiva, non spostiamo più l'orario di inizio
+    // altrimenti il SoC che sale sposta i tempi e l'app va in pausa.
+    if (isCharging && isActive) {
+      DateTime target = DateTime(now.year, now.month, now.day, targetTimeInput.hour, targetTimeInput.minute);
+      if (target.isBefore(now)) target = target.add(const Duration(days: 1));
+      setState(() { 
+        fullEndDate = target; 
+      });
+      return; 
+    }
+
+    // Calcolo normale quando il sistema è OFF o in ATTESA
     DateTime target = DateTime(now.year, now.month, now.day, targetTimeInput.hour, targetTimeInput.minute);
     if (target.isBefore(now)) target = target.add(const Duration(days: 1));
-    
-    // Calcoliamo il tempo necessario basandoci sul socTarget meno quello attuale
     double kwhNeeded = ((socTarget - currentSoc) / 100) * batteryCap;
     int mins = ((kwhNeeded.clamp(0.0, 500) / wallboxPwr) * 60).round();
-    
     setState(() { 
       fullEndDate = target; 
       fullStartDate = target.subtract(Duration(minutes: mins)); 
