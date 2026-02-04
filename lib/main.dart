@@ -313,35 +313,47 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 
   void _deleteCharge(int index) async {
-  final removedItem = history[index];
-  setState(() => history.removeAt(index));
-  
-  final prefs = await SharedPreferences.getInstance();
-  prefs.setString('logs', jsonEncode(history));
-  _forceFirebaseSync();
-
-  // Rimuoviamo eventuali snackbar precedenti per evitare sovrapposizioni
-  ScaffoldMessenger.of(context).clearSnackBars();
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: const Text("Carica eliminata definitivamente"),
-      backgroundColor: const Color(0xFF101A26),
-      duration: const Duration(seconds: 3), // Si chiuderà da sola dopo 3 secondi
-      behavior: SnackBarBehavior.floating,  // La rende più moderna e "staccata" dal fondo
-      action: SnackBarAction(
-        label: "RIPRISTINA", // "Annulla" era ambiguo, meglio "Ripristina"
-        textColor: Colors.cyanAccent,
-        onPressed: () async {
-          setState(() {
-            history.insert(index, removedItem);
-            history.sort((a, b) => DateTime.parse(b['date']).compareTo(DateTime.parse(a['date'])));
-          });
-          prefs.setString('logs', jsonEncode(history));
-          _forceFirebaseSync();
-        },
-      ),
-    ),
+  // 1. Mostra il dialogo di conferma
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        backgroundColor: const Color(0xFF0A141D),
+        title: const Text("CONFERMA ELIMINAZIONE", style: TextStyle(color: Colors.redAccent, fontSize: 16, fontWeight: FontWeight.bold)),
+        content: const Text("Vuoi davvero eliminare questa sessione di ricarica? L'azione non può essere annullata."),
+        actions: [
+          // Tasto per annullare (chiude solo il pop-up)
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("ANNULLA", style: TextStyle(color: Colors.white38)),
+          ),
+          // Tasto per eliminare (esegue l'azione)
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+            onPressed: () async {
+              // Chiude il dialogo
+              Navigator.pop(context);
+              
+              // Esegue l'eliminazione effettiva
+              setState(() => history.removeAt(index));
+              
+              final prefs = await SharedPreferences.getInstance();
+              prefs.setString('logs', jsonEncode(history));
+              _forceFirebaseSync();
+              
+              // Feedback visivo finale
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Ricarica rimossa correttamente"),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            child: const Text("ELIMINA"),
+          ),
+        ],
+      );
+    },
   );
 }
 
