@@ -313,23 +313,37 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 
   void _deleteCharge(int index) async {
-    final removedItem = history[index];
-    setState(() => history.removeAt(index));
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setString('logs', jsonEncode(history));
-    _forceFirebaseSync();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: const Text("Carica eliminata"),
-      action: SnackBarAction(label: "ANNULLA", onPressed: () async {
-        setState(() {
-          history.insert(index, removedItem);
-          history.sort((a, b) => DateTime.parse(b['date']).compareTo(DateTime.parse(a['date'])));
-        });
-        prefs.setString('logs', jsonEncode(history));
-        _forceFirebaseSync();
-      }),
-    ));
-  }
+  final removedItem = history[index];
+  setState(() => history.removeAt(index));
+  
+  final prefs = await SharedPreferences.getInstance();
+  prefs.setString('logs', jsonEncode(history));
+  _forceFirebaseSync();
+
+  // Rimuoviamo eventuali snackbar precedenti per evitare sovrapposizioni
+  ScaffoldMessenger.of(context).clearSnackBars();
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: const Text("Carica eliminata definitivamente"),
+      backgroundColor: const Color(0xFF101A26),
+      duration: const Duration(seconds: 3), // Si chiuderà da sola dopo 3 secondi
+      behavior: SnackBarBehavior.floating,  // La rende più moderna e "staccata" dal fondo
+      action: SnackBarAction(
+        label: "RIPRISTINA", // "Annulla" era ambiguo, meglio "Ripristina"
+        textColor: Colors.cyanAccent,
+        onPressed: () async {
+          setState(() {
+            history.insert(index, removedItem);
+            history.sort((a, b) => DateTime.parse(b['date']).compareTo(DateTime.parse(a['date'])));
+          });
+          prefs.setString('logs', jsonEncode(history));
+          _forceFirebaseSync();
+        },
+      ),
+    ),
+  );
+}
 
   void _showSnack(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: isError ? Colors.redAccent : const Color(0xFF101A26)));

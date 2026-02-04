@@ -66,6 +66,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   double energySession = 0.0;
   TimeOfDay targetTimeInput = const TimeOfDay(hour: 7, minute: 0);
   
+  DateTime? lockedStartDate; // Aggiungi questa qui
   DateTime now = DateTime.now();
   DateTime? fullStartDate;
   DateTime? fullEndDate;
@@ -205,36 +206,40 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 
   void _loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-    userId = prefs.getString('uid') ?? const Uuid().v4();
-    selectedVehicle = prefs.getString('vehicleName') ?? "Manuale / Altro";
+  final prefs = await SharedPreferences.getInstance();
+  userId = prefs.getString('uid') ?? const Uuid().v4();
+  selectedVehicle = prefs.getString('vehicleName') ?? "Manuale / Altro";
+  
+  setState(() {
+    batteryCap = (prefs.getDouble('cap') ?? 44.0);
+    wallboxPwr = (prefs.getDouble('pwr') ?? 3.7).clamp(1.5, 11.0);
+    costPerKwh = prefs.getDouble('cost') ?? 0.25;
+    socStart = prefs.getDouble('soc_s') ?? 20.0;
+    socTarget = prefs.getDouble('soc_t') ?? 80.0;
+    targetTimeInput = TimeOfDay(hour: prefs.getInt('targetHour') ?? 7, minute: prefs.getInt('targetMinute') ?? 0);
+    isActive = prefs.getBool('isActive') ?? false;
+    currentSoc = prefs.getDouble('currentSoc') ?? socStart;
+    energySession = prefs.getDouble('energySession') ?? 0.0;
     
-    setState(() {
-      batteryCap = (prefs.getDouble('cap') ?? 44.0);
-      wallboxPwr = (prefs.getDouble('pwr') ?? 3.7).clamp(1.5, 11.0);
-      costPerKwh = prefs.getDouble('cost') ?? 0.25;
-      socStart = prefs.getDouble('soc_s') ?? 20.0;
-      socTarget = prefs.getDouble('soc_t') ?? 80.0;
-      targetTimeInput = TimeOfDay(hour: prefs.getInt('targetHour') ?? 7, minute: prefs.getInt('targetMinute') ?? 0);
-      isActive = prefs.getBool('isActive') ?? false;
-      currentSoc = prefs.getDouble('currentSoc') ?? socStart;
-      energySession = prefs.getDouble('energySession') ?? 0.0;
-      
-      _costCtrl.text = costPerKwh.toStringAsFixed(2);
-      _capCtrl.text = batteryCap.toStringAsFixed(1);
-      _pwrCtrl.text = wallboxPwr.toStringAsFixed(1);
-      _uidCtrl.text = userId;
-      
-      final data = prefs.getString('logs');
-      if (data != null) history = List<Map<String, dynamic>>.from(jsonDecode(data));
-    });
+    // RECUPERO ORA CONGELATA
+    String? lockedStr = prefs.getString('lockedStartDate');
+    if (lockedStr != null) lockedStartDate = DateTime.parse(lockedStr);
 
-    if (isActive) {
-      _processCharging(); // Recupera energia se app era chiusa
-    }
-    _recalcSchedule();
-    _forceFirebaseSync();
+    _costCtrl.text = costPerKwh.toStringAsFixed(2);
+    _capCtrl.text = batteryCap.toStringAsFixed(1);
+    _pwrCtrl.text = wallboxPwr.toStringAsFixed(1);
+    _uidCtrl.text = userId;
+    
+    final data = prefs.getString('logs');
+    if (data != null) history = List<Map<String, dynamic>>.from(jsonDecode(data));
+  });
+
+  if (isActive) {
+    _processCharging(); // Questo recupera i minuti persi mentre l'app era chiusa
   }
+  _recalcSchedule();
+  _forceFirebaseSync();
+}
 
   void _updateParams({double? pwr, double? cap, double? cost}) async {
     final prefs = await SharedPreferences.getInstance();
@@ -251,23 +256,34 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 
   void _toggleSystem() async {
-    HapticFeedback.mediumImpact();
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      isActive = !isActive;
-      if (!isActive) { 
-        isWaiting = false; isCharging = false; _lastTick = null; 
-        prefs.remove('last_timestamp');
-      } else { 
-        _lastTick = DateTime.now(); 
-        prefs.setInt('last_timestamp', _lastTick!.millisecondsSinceEpoch);
-        // Salviamo lo stato iniziale per coerenza
-        prefs.setDouble('soc_s', socStart);
-        prefs.setDouble('currentSoc', currentSoc);
-      }
-    });
-    prefs.setBool('isActive', isActive);
-  }
+  HapticFeedback.mediumImpact();
+  final prefs = await SharedPreferences.getInstance();
+  setState(() {
+    isActive = !isActive;
+    if (!isActive) { 
+      isWaiting = false; isCharging = false; _lastTick = null; 
+      lockedStartDate = null; // Sblocca l'orario
+      prefs.remove('last_timestamp');
+      prefs.remove('lockedStartDate');
+    } else { 
+      _lastTick = DateTime.now(); 
+      prefs.setInt('last_timestamp', _lastTick!.millisecondsSinceEpoch);
+      
+      // CONGELA L'ORA DI INIZIO ADESSO
+      double kwhNeeded = ((socTarget - currentSoc) / 100) * batteryCap;
+      int mins = ((kwhNeeded.clamp(0.0, 500) / wallboxPwr) * 60).round();
+      DateTime target = DateTime(now.year, now.month, now.day, targetTimeInput.hour, targetTimeInput.minute);
+      if (target.isBefore(now)) target = target.add(const Duration(days: 1));
+      
+      lockedStartDate = target.subtract(Duration(minutes: mins));
+      prefs.setString('lockedStartDate', lockedStartDate!.toIso8601String());
+      
+      prefs.setDouble('soc_s', socStart);
+      prefs.setDouble('currentSoc', currentSoc);
+    }
+  });
+  prefs.setBool('isActive', isActive);
+}
 
   void _save(bool tot) async {
     double kwh = tot ? (((socTarget - socStart)/100)*batteryCap) : energySession;
@@ -364,7 +380,9 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   ]));
 
   Widget _compactMainRow() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-    _dateCol("INIZIO", fullStartDate, isWaiting ? Colors.orangeAccent : Colors.white24),
+    // MODIFICA QUI: Se attivo usa l'ora bloccata, se spento usa quella calcolata
+    _dateCol("INIZIO", isActive ? lockedStartDate : fullStartDate, isWaiting ? Colors.orangeAccent : Colors.white24),
+    
     Column(children: [
       Text(DateFormat('HH:mm').format(now), style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w100, fontFamily: 'monospace')),
       Text(DateFormat('EEE d MMM').format(now).toUpperCase(), style: const TextStyle(fontSize: 10, color: Colors.white38)),
