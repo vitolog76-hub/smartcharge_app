@@ -322,7 +322,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     builder: (BuildContext context) {
       return AlertDialog(
         backgroundColor: const Color(0xFF0A141D),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20),side: const BorderSide(color: Colors.white10), // Usa 'side' invece di 'border'
+),
         title: const Text("CONFERMA", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
         content: const Text("Vuoi davvero eliminare questa sessione?"),
         actions: [
