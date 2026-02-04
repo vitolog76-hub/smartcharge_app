@@ -164,12 +164,14 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
         if (!isWaiting) setState(() { isWaiting = true; isCharging = false; });
         _lastTick = now;
       } 
-      // MODIFICA QUI: Quando raggiunge il target
+      // MODIFICA QUI: Se raggiunge il target, chiama _save con il popup
       else if (currentSoc >= socTarget) { 
-        _stopSystemAuto(); // Chiamiamo una nuova funzione
+        currentSoc = socTarget; // Forza il valore esatto (es. 80.0)
+        _save(true); // Questa ora aprirà il popup automaticamente
       }
     }
   }
+
   void _stopSystemAuto() {
     HapticFeedback.heavyImpact(); // Vibrazione forte: carica finita!
     _clockTimer?.cancel();
@@ -181,7 +183,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     // Lanciamo il riepilogo con 'tot: true' perché ha completato la carica target
     _save(true); 
   }
-  
+
   void _processCharging() async {
     final nowCharge = DateTime.now();
     final prefs = await SharedPreferences.getInstance();
@@ -301,11 +303,62 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 }
 
   void _save(bool tot) async {
-    // 1. Calcoliamo i dati della ricarica prima di resettare
-    double kwh = tot ? (((socTarget - socStart) / 100) * batteryCap) : energySession;
+    // 1. Calcola i dati PRIMA di resettare tutto
+    double kwh = tot ? (((socTarget - socStart)/100)*batteryCap) : energySession;
     if (kwh < 0) kwh = 0;
-    double cost = kwh * costPerKwh;
-    DateTime sessionDate = DateTime.now();
+    double costoSessione = kwh * costPerKwh;
+
+    // 2. Mostra il Pop-up di riepilogo
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0A141D),
+          title: const Text("RICARICA COMPLETATA", style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Energia: ${kwh.toStringAsFixed(2)} kWh", style: const TextStyle(color: Colors.white)),
+              Text("Costo: € ${costoSessione.toStringAsFixed(2)}", style: const TextStyle(color: Colors.greenAccent, fontSize: 18)),
+              const SizedBox(height: 20),
+              const Text("Vuoi salvare questa sessione nel registro?", style: TextStyle(fontSize: 12, color: Colors.white54)),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context), 
+              child: const Text("SCARTA", style: TextStyle(color: Colors.white38))
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent),
+              onPressed: () {
+                Navigator.pop(context);
+                _addLogEntry(DateTime.now(), kwh); // Salva effettivamente
+              },
+              child: const Text("SALVA", style: TextStyle(color: Colors.black)),
+            ),
+          ],
+        );
+      }
+    );
+
+    // 3. Resetta lo stato del sistema
+    setState(() { 
+      if(tot) currentSoc = socTarget; 
+      energySession = 0; 
+      isActive = false; 
+      isCharging = false; 
+      isWaiting = false; 
+      _lastTick = null;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setDouble('currentSoc', currentSoc);
+    prefs.setDouble('energySession', 0.0);
+    prefs.setBool('isActive', false);
+    prefs.remove('last_timestamp');
+  }
 
     // 2. Mostriamo il pop-up di riepilogo
     showDialog(
