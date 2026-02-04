@@ -66,7 +66,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   double energySession = 0.0;
   TimeOfDay targetTimeInput = const TimeOfDay(hour: 7, minute: 0);
   
-  DateTime? lockedStartDate; // Aggiungi questa qui
+  DateTime? lockedStartDate; 
   DateTime now = DateTime.now();
   DateTime? fullStartDate;
   DateTime? fullEndDate;
@@ -99,6 +99,13 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     _fetchRemoteModels(); 
     _clockTimer = Timer.periodic(const Duration(milliseconds: 100), (t) => _updateClock());
     _bgController = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
+  }
+
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    _bgController.dispose();
+    super.dispose();
   }
 
   void _fetchRemoteModels() async {
@@ -163,25 +170,11 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       } else if (now.isBefore(fullStartDate!)) {
         if (!isWaiting) setState(() { isWaiting = true; isCharging = false; });
         _lastTick = now;
-      } 
-      // MODIFICA QUI: Se raggiunge il target, chiama _save con il popup
-      else if (currentSoc >= socTarget) { 
-        currentSoc = socTarget; // Forza il valore esatto (es. 80.0)
-        _save(true); // Questa ora aprirà il popup automaticamente
+      } else if (currentSoc >= socTarget) { 
+        _toggleSystem(); 
+        _save(true); 
       }
     }
-  }
-
-  void _stopSystemAuto() {
-    HapticFeedback.heavyImpact(); // Vibrazione forte: carica finita!
-    _clockTimer?.cancel();
-    setState(() {
-      isActive = false;
-      isCharging = false;
-      isWaiting = false;
-    });
-    // Lanciamo il riepilogo con 'tot: true' perché ha completato la carica target
-    _save(true); 
   }
 
   void _processCharging() async {
@@ -212,7 +205,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     DateTime target = DateTime(now.year, now.month, now.day, targetTimeInput.hour, targetTimeInput.minute);
     if (target.isBefore(now)) target = target.add(const Duration(days: 1));
     
-    // Calcoliamo il tempo necessario basandoci sul socTarget meno quello attuale
     double kwhNeeded = ((socTarget - currentSoc) / 100) * batteryCap;
     int mins = ((kwhNeeded.clamp(0.0, 500) / wallboxPwr) * 60).round();
     
@@ -223,40 +215,39 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 
   void _loadData() async {
-  final prefs = await SharedPreferences.getInstance();
-  userId = prefs.getString('uid') ?? const Uuid().v4();
-  selectedVehicle = prefs.getString('vehicleName') ?? "Manuale / Altro";
-  
-  setState(() {
-    batteryCap = (prefs.getDouble('cap') ?? 44.0);
-    wallboxPwr = (prefs.getDouble('pwr') ?? 3.7).clamp(1.5, 11.0);
-    costPerKwh = prefs.getDouble('cost') ?? 0.25;
-    socStart = prefs.getDouble('soc_s') ?? 20.0;
-    socTarget = prefs.getDouble('soc_t') ?? 80.0;
-    targetTimeInput = TimeOfDay(hour: prefs.getInt('targetHour') ?? 7, minute: prefs.getInt('targetMinute') ?? 0);
-    isActive = prefs.getBool('isActive') ?? false;
-    currentSoc = prefs.getDouble('currentSoc') ?? socStart;
-    energySession = prefs.getDouble('energySession') ?? 0.0;
+    final prefs = await SharedPreferences.getInstance();
+    userId = prefs.getString('uid') ?? const Uuid().v4();
+    selectedVehicle = prefs.getString('vehicleName') ?? "Manuale / Altro";
     
-    // RECUPERO ORA CONGELATA
-    String? lockedStr = prefs.getString('lockedStartDate');
-    if (lockedStr != null) lockedStartDate = DateTime.parse(lockedStr);
+    setState(() {
+      batteryCap = (prefs.getDouble('cap') ?? 44.0);
+      wallboxPwr = (prefs.getDouble('pwr') ?? 3.7).clamp(1.5, 11.0);
+      costPerKwh = prefs.getDouble('cost') ?? 0.25;
+      socStart = prefs.getDouble('soc_s') ?? 20.0;
+      socTarget = prefs.getDouble('soc_t') ?? 80.0;
+      targetTimeInput = TimeOfDay(hour: prefs.getInt('targetHour') ?? 7, minute: prefs.getInt('targetMinute') ?? 0);
+      isActive = prefs.getBool('isActive') ?? false;
+      currentSoc = prefs.getDouble('currentSoc') ?? socStart;
+      energySession = prefs.getDouble('energySession') ?? 0.0;
+      
+      String? lockedStr = prefs.getString('lockedStartDate');
+      if (lockedStr != null) lockedStartDate = DateTime.parse(lockedStr);
 
-    _costCtrl.text = costPerKwh.toStringAsFixed(2);
-    _capCtrl.text = batteryCap.toStringAsFixed(1);
-    _pwrCtrl.text = wallboxPwr.toStringAsFixed(1);
-    _uidCtrl.text = userId;
-    
-    final data = prefs.getString('logs');
-    if (data != null) history = List<Map<String, dynamic>>.from(jsonDecode(data));
-  });
+      _costCtrl.text = costPerKwh.toStringAsFixed(2);
+      _capCtrl.text = batteryCap.toStringAsFixed(1);
+      _pwrCtrl.text = wallboxPwr.toStringAsFixed(1);
+      _uidCtrl.text = userId;
+      
+      final data = prefs.getString('logs');
+      if (data != null) history = List<Map<String, dynamic>>.from(jsonDecode(data));
+    });
 
-  if (isActive) {
-    _processCharging(); // Questo recupera i minuti persi mentre l'app era chiusa
+    if (isActive) {
+      _processCharging();
+    }
+    _recalcSchedule();
+    _forceFirebaseSync();
   }
-  _recalcSchedule();
-  _forceFirebaseSync();
-}
 
   void _updateParams({double? pwr, double? cap, double? cost}) async {
     final prefs = await SharedPreferences.getInstance();
@@ -273,94 +264,40 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 
   void _toggleSystem() async {
-  HapticFeedback.mediumImpact();
-  final prefs = await SharedPreferences.getInstance();
-  setState(() {
-    isActive = !isActive;
-    if (!isActive) { 
-      isWaiting = false; isCharging = false; _lastTick = null; 
-      lockedStartDate = null; // Sblocca l'orario
-      prefs.remove('last_timestamp');
-      prefs.remove('lockedStartDate');
-    } else { 
-      _lastTick = DateTime.now(); 
-      prefs.setInt('last_timestamp', _lastTick!.millisecondsSinceEpoch);
-      
-      // CONGELA L'ORA DI INIZIO ADESSO
-      double kwhNeeded = ((socTarget - currentSoc) / 100) * batteryCap;
-      int mins = ((kwhNeeded.clamp(0.0, 500) / wallboxPwr) * 60).round();
-      DateTime target = DateTime(now.year, now.month, now.day, targetTimeInput.hour, targetTimeInput.minute);
-      if (target.isBefore(now)) target = target.add(const Duration(days: 1));
-      
-      lockedStartDate = target.subtract(Duration(minutes: mins));
-      prefs.setString('lockedStartDate', lockedStartDate!.toIso8601String());
-      
-      prefs.setDouble('soc_s', socStart);
-      prefs.setDouble('currentSoc', currentSoc);
-    }
-  });
-  prefs.setBool('isActive', isActive);
-}
-
-  void _save(bool tot) async {
-    // 1. Calcola i dati PRIMA di resettare tutto
-    double kwh = tot ? (((socTarget - socStart)/100)*batteryCap) : energySession;
-    if (kwh < 0) kwh = 0;
-    double costoSessione = kwh * costPerKwh;
-
-    // 2. Mostra il Pop-up di riepilogo
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF0A141D),
-          title: const Text("RICARICA COMPLETATA", style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text("Energia: ${kwh.toStringAsFixed(2)} kWh", style: const TextStyle(color: Colors.white)),
-              Text("Costo: € ${costoSessione.toStringAsFixed(2)}", style: const TextStyle(color: Colors.greenAccent, fontSize: 18)),
-              const SizedBox(height: 20),
-              const Text("Vuoi salvare questa sessione nel registro?", style: TextStyle(fontSize: 12, color: Colors.white54)),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context), 
-              child: const Text("SCARTA", style: TextStyle(color: Colors.white38))
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent),
-              onPressed: () {
-                Navigator.pop(context);
-                _addLogEntry(DateTime.now(), kwh); // Salva effettivamente
-              },
-              child: const Text("SALVA", style: TextStyle(color: Colors.black)),
-            ),
-          ],
-        );
-      }
-    );
-
-    // 3. Resetta lo stato del sistema
-    setState(() { 
-      if(tot) currentSoc = socTarget; 
-      energySession = 0; 
-      isActive = false; 
-      isCharging = false; 
-      isWaiting = false; 
-      _lastTick = null;
-    });
-
+    HapticFeedback.mediumImpact();
     final prefs = await SharedPreferences.getInstance();
-    prefs.setDouble('currentSoc', currentSoc);
-    prefs.setDouble('energySession', 0.0);
-    prefs.setBool('isActive', false);
-    prefs.remove('last_timestamp');
+    setState(() {
+      isActive = !isActive;
+      if (!isActive) { 
+        isWaiting = false; isCharging = false; _lastTick = null; 
+        lockedStartDate = null; 
+        prefs.remove('last_timestamp');
+        prefs.remove('lockedStartDate');
+      } else { 
+        _lastTick = DateTime.now(); 
+        prefs.setInt('last_timestamp', _lastTick!.millisecondsSinceEpoch);
+        
+        double kwhNeeded = ((socTarget - currentSoc) / 100) * batteryCap;
+        int mins = ((kwhNeeded.clamp(0.0, 500) / wallboxPwr) * 60).round();
+        DateTime target = DateTime(now.year, now.month, now.day, targetTimeInput.hour, targetTimeInput.minute);
+        if (target.isBefore(now)) target = target.add(const Duration(days: 1));
+        
+        lockedStartDate = target.subtract(Duration(minutes: mins));
+        prefs.setString('lockedStartDate', lockedStartDate!.toIso8601String());
+        
+        prefs.setDouble('soc_s', socStart);
+        prefs.setDouble('currentSoc', currentSoc);
+      }
+    });
+    prefs.setBool('isActive', isActive);
   }
 
-    // 2. Mostriamo il pop-up di riepilogo
+  void _save(bool tot) async {
+    double kwh = tot ? (((socTarget - socStart) / 100) * batteryCap) : energySession;
+    if (kwh < 0) kwh = 0;
+    double cost = kwh * costPerKwh;
+    DateTime sessionDate = DateTime.now();
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -392,7 +329,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
-                _resetAfterSession(tot); // Resetta l'interfaccia senza salvare
+                _resetAfterSession(tot);
               },
               child: const Text("SCARTA", style: TextStyle(color: Colors.white38)),
             ),
@@ -400,7 +337,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
               style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
               onPressed: () {
                 Navigator.pop(context);
-                _addLogEntry(sessionDate, kwh); // Chiama la tua funzione esistente per salvare
+                _addLogEntry(sessionDate, kwh);
                 _resetAfterSession(tot);
               },
               child: const Text("SALVA", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -411,7 +348,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     );
   }
 
-  // Funzione di supporto per resettare l'interfaccia
   void _resetAfterSession(bool tot) async {
     setState(() {
       if (tot) currentSoc = socTarget;
@@ -430,7 +366,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     prefs.remove('lockedStartDate');
   }
 
-  // Widget per le righe del pop-up
   Widget _buildSummaryRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -457,46 +392,37 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 
   Future<bool> _showDeleteConfirmation(int index) async {
-  bool confirm = false;
-  
-  await showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (BuildContext dialogContext) { // Usiamo un nome diverso per il context del dialogo
-      return AlertDialog(
-        backgroundColor: const Color(0xFF0A141D),
-        title: const Text("CONFERMA", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-        content: const Text("Vuoi davvero eliminare questa sessione?"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              confirm = false; 
-              Navigator.of(dialogContext).pop();
-            },
-            child: const Text("ANNULLA", style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () async {
-              confirm = true; 
-              Navigator.of(dialogContext).pop();
-
-              setState(() {
-                history.removeAt(index);
-              });
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString('logs', jsonEncode(history));
-              _forceFirebaseSync();
-            },
-            child: const Text("ELIMINA", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      );
-    },
-  );
-  
-  return confirm; 
-}
+    bool confirm = false;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0A141D),
+          title: const Text("CONFERMA", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          content: const Text("Vuoi davvero eliminare questa sessione?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                confirm = false; 
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text("ANNULLA", style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+              onPressed: () {
+                confirm = true; 
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text("ELIMINA", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+    return confirm; 
+  }
 
   void _showSnack(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: isError ? Colors.redAccent : const Color(0xFF101A26)));
@@ -547,9 +473,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   ]));
 
   Widget _compactMainRow() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-    // MODIFICA QUI: Se attivo usa l'ora bloccata, se spento usa quella calcolata
     _dateCol("INIZIO CARICA", isActive ? lockedStartDate : fullStartDate, isWaiting ? Colors.orangeAccent : Colors.white24),
-    
     Column(children: [
       Text(DateFormat('HH:mm').format(now), style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w100, fontFamily: 'monospace')),
       Text(DateFormat('EEE d MMM').format(now).toUpperCase(), style: const TextStyle(fontSize: 10, color: Colors.white38)),
@@ -609,7 +533,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
               shadows: [
                 Shadow(color: Colors.orangeAccent.withOpacity(0.8), blurRadius: 10),
                 Shadow(color: Colors.orangeAccent.withOpacity(0.5), blurRadius: 20),
-                Shadow(color: Colors.amberAccent.withOpacity(0.3), blurRadius: 30),
               ],
             ),
           ),
@@ -822,35 +745,40 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                 Column(children: [const Text("SPESA TOT", style: TextStyle(fontSize: 10, color: Colors.white38)), Text("€ ${totalCost.toStringAsFixed(2)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.greenAccent))])
             ])),
             Expanded(
-  child: ListView.builder(
-    itemCount: history.length, 
-    itemBuilder: (c, i) {
-      final item = history[i];
-      return Dismissible(
-        key: Key(item['date'] + i.toString()), 
-        direction: DismissDirection.endToStart, 
-        background: Container(
-          alignment: Alignment.centerRight, 
-          padding: const EdgeInsets.only(right: 20), 
-          color: Colors.redAccent.withOpacity(0.2), 
-          child: const Icon(Icons.delete_outline, color: Colors.redAccent)
-        ),
-        // AGGIUNGI QUESTO BLOCCO: blocca l'animazione finché non confermi nel pop-up
-        confirmDismiss: (direction) async {
-          return await _showDeleteConfirmation(i); 
-        },
-        // Riduciamo onDismissed perché il lavoro grosso lo fa confirmDismiss
-        onDismissed: (direction) {
-          setModal(() {}); 
-        },
-        child: ListTile(
-          leading: const Icon(Icons.bolt, color: Colors.white12), 
-          title: Text(DateFormat('dd MMMM HH:mm', 'it_IT').format(DateTime.parse(item['date']))), 
-          subtitle: Text("${item['kwh'].toStringAsFixed(2)} kWh"), 
-          trailing: Text("€ ${item['cost'].toStringAsFixed(2)}", style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
-                  ),
-                );
-            }))
+              child: ListView.builder(
+                itemCount: history.length, 
+                itemBuilder: (c, i) {
+                  final item = history[i];
+                  return Dismissible(
+                    key: Key(item['date'] + i.toString()), 
+                    direction: DismissDirection.endToStart, 
+                    background: Container(
+                      alignment: Alignment.centerRight, 
+                      padding: const EdgeInsets.only(right: 20), 
+                      color: Colors.redAccent.withOpacity(0.2), 
+                      child: const Icon(Icons.delete_outline, color: Colors.redAccent)
+                    ),
+                    confirmDismiss: (direction) async {
+                      bool confirm = await _showDeleteConfirmation(i);
+                      if (confirm) {
+                        setState(() { history.removeAt(i); });
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setString('logs', jsonEncode(history));
+                        _forceFirebaseSync();
+                        setModal(() {});
+                      }
+                      return confirm;
+                    },
+                    child: ListTile(
+                      leading: const Icon(Icons.bolt, color: Colors.white12), 
+                      title: Text(DateFormat('dd MMMM HH:mm', 'it_IT').format(DateTime.parse(item['date']))), 
+                      subtitle: Text("${item['kwh'].toStringAsFixed(2)} kWh"), 
+                      trailing: Text("€ ${item['cost'].toStringAsFixed(2)}", style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+                    ),
+                  );
+                }
+              )
+            )
         ]));
       })
     );

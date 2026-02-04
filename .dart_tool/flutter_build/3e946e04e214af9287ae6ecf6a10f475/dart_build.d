@@ -1,0 +1,1 @@
+ /Users/giuseppevitolo/Development/smartcharge_app/.dart_tool/flutter_build/3e946e04e214af9287ae6ecf6a10f475/dart_build_result.json: 
