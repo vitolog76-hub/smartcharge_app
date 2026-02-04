@@ -158,13 +158,30 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     _recalcSchedule();
     
     if (isActive) {
-      // SPOSTATO IN CIMA: Controllo prioritario del target
-      if (currentSoc >= socTarget) { 
-        _toggleSystem(); 
-        _save(true); 
-        return; // Interrompe l'esecuzione immediatamente
+      // 1. PRIORITÀ ASSOLUTA: IL TARGET
+      if (currentSoc >= socTarget) {
+        _toggleSystem();
+        _vibrateFinish(); // Funzione per la vibrazione
+        _save(true);
+        return;
       }
 
+      // 2. CONTROLLO ORARIO (con tolleranza)
+      // Se è passata l'ora di fine MA siamo vicinissimi al target (es. > 79.5%), 
+      // continuiamo a caricare finché non arriviamo all'80% preciso.
+      if (now.isAfter(fullEndDate!)) {
+        // Se mancano meno di 0.5% al target, non spegnere, continua!
+        bool isCloseToTarget = (socTarget - currentSoc) < 0.5;
+        
+        if (!isCloseToTarget) {
+          _toggleSystem();
+          _vibrateFinish();
+          _save(false);
+          return;
+        }
+      }
+
+      // 3. LOGICA DI CARICA
       if (now.isAfter(fullStartDate!)) {
         if (!isCharging) setState(() { isWaiting = false; isCharging = true; });
         _processCharging();
@@ -172,6 +189,14 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
         if (!isWaiting) setState(() { isWaiting = true; isCharging = false; });
         _lastTick = now;
       }
+    }
+  }
+  
+  void _vibrateFinish() async {
+    // Vibrazione tripla per avvisare della fine ricarica
+    for (int i = 0; i < 3; i++) {
+      HapticFeedback.heavyImpact();
+      await Future.delayed(const Duration(milliseconds: 300));
     }
   }
 
@@ -193,8 +218,13 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       double socAdded = (kwhAdded / batteryCap) * 100;
       setState(() { 
         energySession += kwhAdded; 
-        // CLAMP: forza il valore a non superare socTarget
-        currentSoc = (currentSoc + socAdded).clamp(0.0, socTarget); 
+        // Permettiamo un micro-arrotondamento finale per evitare che si fermi a 79.99
+        double nextSoc = currentSoc + socAdded;
+        if (nextSoc > (socTarget - 0.01) && nextSoc < (socTarget + 0.05)) {
+          currentSoc = socTarget;
+        } else {
+          currentSoc = nextSoc.clamp(0.0, 100.0);
+        }
       });
       prefs.setDouble('currentSoc', currentSoc);
       prefs.setDouble('energySession', energySession);
