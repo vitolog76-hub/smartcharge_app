@@ -513,7 +513,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
               _buildSummaryRow(t('energy'), "${kwh.toStringAsFixed(2)} kWh"),
               _buildSummaryRow(t('cost'), "€ ${cost.toStringAsFixed(2)}"),
               const SizedBox(height: 20),
-              const Text(t('domanda_salva'), 
+              Text(t('domanda_salva'), 
                 style: TextStyle(color: Colors.white70, fontSize: 14)),
             ],
           ),
@@ -523,7 +523,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                 Navigator.pop(context);
                 _resetAfterSession(tot); // Resetta l'interfaccia senza salvare
               },
-              child: const Text(t('annulla'), style: TextStyle(color: Colors.white38)),
+              child: Text(t('annulla'), style: TextStyle(color: Colors.white38)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
@@ -532,7 +532,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                 _addLogEntry(sessionDate, kwh); // Chiama la tua funzione esistente per salvare
                 _resetAfterSession(tot);
               },
-              child: const Text("SALVA", style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text("SALVA", style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -594,15 +594,15 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     builder: (BuildContext dialogContext) { // Usiamo un nome diverso per il context del dialogo
       return AlertDialog(
         backgroundColor: const Color(0xFF0A141D),
-        title: const Text("CONFERMA", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-        content: const Text(t('elimina_messaggio')),
+        title: Text("CONFERMA", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+        content: Text(t('elimina_messaggio')),
         actions: [
           TextButton(
             onPressed: () {
               confirm = false; 
               Navigator.of(dialogContext).pop();
             },
-            child: const Text(t('annulla'), style: TextStyle(color: Colors.white54)),
+            child: Text(t('annulla'), style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -617,7 +617,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
               await prefs.setString('logs', jsonEncode(history));
               _forceFirebaseSync();
             },
-            child: const Text(t('elimina_bottone'), style: TextStyle(color: Colors.white)),
+            child: Text(t('elimina_bottone'), style: TextStyle(color: Colors.white)),
           ),
         ],
       );
@@ -671,7 +671,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   Widget _header() => Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
     IconButton(icon: const Icon(Icons.settings_outlined, color: Colors.white30), onPressed: _showSettings),
-    const Text("SMART CHARGE", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2, color: Colors.cyanAccent, fontSize: 18)),
+    Const Text("SMART CHARGE", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2, color: Colors.cyanAccent, fontSize: 18)),
     IconButton(icon: const Icon(Icons.history, color: Colors.cyanAccent), onPressed: _showHistory),
   ]));
 
@@ -787,21 +787,21 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: _toggleSystem, style: ElevatedButton.styleFrom(backgroundColor: isActive ? Colors.redAccent : Colors.cyanAccent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text(isActive ? t('btn_stop') : t('btn_attiva'), style: const TextStyle(fontWeight: FontWeight.w900)))),
     const SizedBox(height: 10),
     Row(children: [
-      Expanded(child: OutlinedButton(onPressed: () => _save(false), child: const Text(t('save_partial')))),
+      Expanded(child: OutlinedButton(onPressed: () => _save(false), child: Text(t('save_partial')))),
       const SizedBox(width: 10),
-      Expanded(child: ElevatedButton(onPressed: () => _save(true), style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black), child: const Text(t('save_total')))),
+      Expanded(child: ElevatedButton(onPressed: () => _save(true), style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black), child: Text(t('save_total')))),
     ]),
   ]);
 
   void _showSettings() {
     showDialog(context: context, builder: (c) => AlertDialog(
       backgroundColor: const Color(0xFF0A141D),
-      title: const Text(t('settings')),
+      title: Text(t('settings')),
       content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
         // Dentro la Column del Dialog delle impostazioni
 SwitchListTile(
-  title: const Text("Priorità Batteria", style: TextStyle(fontSize: 14)),
-  subtitle: const Text(t('priorita_sottotitolo'), style: TextStyle(fontSize: 11)),
+  title: Text("Priorità Batteria", style: TextStyle(fontSize: 14)),
+  subtitle: Text(t('priorita_sottotitolo'), style: TextStyle(fontSize: 11)),
   value: priorityBattery,
   activeColor: Colors.cyanAccent,
   onChanged: (bool value) async {
@@ -893,7 +893,7 @@ ListTile(
                 else { prefs.setDouble('soc_t', socTarget); }
                 setState(() {}); 
                 Navigator.pop(c); 
-              }, child: const Text("CONFERMA")))
+              }, child: Text("CONFERMA")))
             ],
           )
         )
@@ -918,7 +918,7 @@ ListTile(
     final TextEditingController kwhCtrl = TextEditingController();
     showDialog(context: context, builder: (c) => StatefulBuilder(builder: (c, st) => AlertDialog(
       backgroundColor: const Color(0xFF0A141D),
-      title: const Text(t('inserimento_manuale'), style: TextStyle(color: Colors.cyanAccent, fontSize: 16)),
+      title: Text(t('inserimento_manuale'), style: TextStyle(color: Colors.cyanAccent, fontSize: 16)),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
         ListTile(title: Text(DateFormat('dd/MM/yyyy').format(manualDate)), leading: const Icon(Icons.calendar_today), onTap: () async { final d = await showDatePicker(context: context, initialDate: manualDate, firstDate: DateTime(2020), lastDate: DateTime.now()); if(d != null) st(() => manualDate = d); }),
         ListTile(title: Text(manualTime.format(context)), leading: const Icon(Icons.access_time), onTap: () async { final t = await showTimePicker(context: context, initialTime: manualTime); if(t != null) st(() => manualTime = t); }),
@@ -958,7 +958,7 @@ ListTile(
             const SizedBox(height: 15), 
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
             Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text(t('analisi_consumi'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.cyanAccent)),
+              Text(t('analisi_consumi'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.cyanAccent)),
               Row(children: [
                 IconButton(icon: const Icon(Icons.add_circle_outline, color: Colors.cyanAccent), onPressed: () => _showManualEntry(setModal)),
                 IconButton(icon: const Icon(Icons.download, color: Colors.greenAccent), onPressed: _exportCSV),
