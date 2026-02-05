@@ -47,6 +47,7 @@ const Map<String, Map<String, String>> localizedValues = {
     'elimina_bottone': 'ELIMINA',
     'annulla': 'ANNULLA',
     'domanda_salva': 'Vuoi salvare questa ricarica nel log?',
+    'select_brand': 'SELEZIONA MARCA',
   },
   'en': {
     'start': 'START', 
@@ -83,6 +84,7 @@ const Map<String, Map<String, String>> localizedValues = {
     'elimina_bottone': 'DELETE',
     'annulla': 'CANCEL',
     'domanda_salva': 'Do you want to save this charge to the log?',
+    'select_brand': 'SELECT BRAND',
   },
   'fr': {
     'start': 'DÉBUT', 
@@ -119,6 +121,7 @@ const Map<String, Map<String, String>> localizedValues = {
     'elimina_bottone': 'SUPPRIMER',
     'annulla': 'ANNULER',
     'domanda_salva': 'Voulez-vous enregistrer cette charge dans le journal?',
+    'select_brand': 'SÉLECTIONNER MARQUE',
   },
   'de': {
     'start': 'START', 
@@ -155,6 +158,7 @@ const Map<String, Map<String, String>> localizedValues = {
     'elimina_bottone': 'LÖSCHEN',
     'annulla': 'ABBRECHEN',
     'domanda_salva': 'Möchten Sie questa ricarica im Log speichern?',
+    'select_brand': 'MARKE WÄHLEN',
   },
 };
 
@@ -800,7 +804,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
         // Dentro la Column del Dialog delle impostazioni
 SwitchListTile(
-  title: Text("Priorità Batteria", style: TextStyle(fontSize: 14)),
+  title: Text(t('priority'), style: TextStyle(fontSize: 14)),
   subtitle: Text(t('priorita_sottotitolo'), style: TextStyle(fontSize: 11)),
   value: priorityBattery,
   activeColor: Colors.cyanAccent,
@@ -849,7 +853,7 @@ ListTile(
           IconButton(icon: const Icon(Icons.copy, size: 18, color: Colors.cyanAccent), onPressed: () { Clipboard.setData(ClipboardData(text: _uidCtrl.text)); _showSnack("ID copiato!"); }),
         ]),
         const SizedBox(height: 20),
-        SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () { _updateParams(cost: double.tryParse(_costCtrl.text.replaceAll(',', '.')), pwr: double.tryParse(_pwrCtrl.text.replaceAll(',', '.')), cap: double.tryParse(_capCtrl.text.replaceAll(',', '.'))); _syncUser(_uidCtrl.text); Navigator.pop(c); }, child: const Text("SALVA"))),
+        SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () { _updateParams(cost: double.tryParse(_costCtrl.text.replaceAll(',', '.')), pwr: double.tryParse(_pwrCtrl.text.replaceAll(',', '.')), cap: double.tryParse(_capCtrl.text.replaceAll(',', '.'))); _syncUser(_uidCtrl.text); Navigator.pop(c); }, child: Text(t('save')))),
       ])),
     ));
   }
@@ -864,7 +868,7 @@ ListTile(
       return SizedBox(height: MediaQuery.of(context).size.height * 0.8, child: Column(children: [
         const SizedBox(height: 15),
         Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-        Padding(padding: const EdgeInsets.all(20), child: Row(children: [if (selectedBrand != null) IconButton(icon: const Icon(Icons.arrow_back, color: Colors.cyanAccent), onPressed: () => setModalState(() => selectedBrand = null)), Text(selectedBrand ?? "SELEZIONA MARCA", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent))])),
+        Padding(padding: const EdgeInsets.all(20), child: Row(children: [if (selectedBrand != null) IconButton(icon: const Icon(Icons.arrow_back, color: Colors.cyanAccent), onPressed: () => setModalState(() => selectedBrand = null)), Text(selectedBrand ?? t('select_brand'), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent))])),
         Expanded(child: selectedBrand == null ? ListView.builder(itemCount: brands.length, itemBuilder: (context, i) => ListTile(title: Text(brands[i]), onTap: () => setModalState(() => selectedBrand = brands[i]))) : ListView.builder(itemCount: models.length, itemBuilder: (context, i) => ListTile(title: Text(models[i]['model']), subtitle: Text("${models[i]['cap']} kWh"), onTap: () { setState(() { selectedVehicle = "${models[i]['brand']} ${models[i]['model']}"; batteryCap = (models[i]['cap'] as num).toDouble(); }); _updateParams(cap: batteryCap); Navigator.pop(context); })))
       ]));
     }));
