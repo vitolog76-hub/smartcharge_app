@@ -500,11 +500,11 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
             borderRadius: BorderRadius.circular(20),
             side: const BorderSide(color: Colors.white10),
           ),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.bolt, color: Colors.cyanAccent),
-              SizedBox(width: 10),
-              Text(t('summary'), style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              const Icon(Icons.bolt, color: Colors.cyanAccent),
+              const SizedBox(width: 10),
+              Text(t('summary'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
@@ -671,7 +671,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   Widget _header() => Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
     IconButton(icon: const Icon(Icons.settings_outlined, color: Colors.white30), onPressed: _showSettings),
-    Const Text("SMART CHARGE", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2, color: Colors.cyanAccent, fontSize: 18)),
+    const Text("SMART CHARGE", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2, color: Colors.cyanAccent, fontSize: 18)),
     IconButton(icon: const Icon(Icons.history, color: Colors.cyanAccent), onPressed: _showHistory),
   ]));
 
