@@ -1,6 +1,0 @@
-{
-  "framework": "flutter",
-  "installCommand": "flutter precache",
-  "buildCommand": "flutter build web --release",
-  "outputDirectory": "build/web"
-}
