@@ -1,19 +1,15 @@
 {
   "name": "smartcharge_app",
   "version": "1.0.0",
-  "description": "A new Flutter project.",
+  "description": "SmartCharge App deployment on Vercel",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "flutter build web --release"
+    "build": "if [ ! -d \"$HOME/flutter\" ]; then git clone https://github.com/flutter/flutter.git --depth 1 -b stable $HOME/flutter; fi && export PATH=\"$HOME/flutter/bin:$PATH\" && flutter precache --web && flutter pub get && flutter build web --release --dart-define=FLUTTER_WEB_RENDERER=html",
+    "install": "npm install"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/vitolog76-hub/smartcharge_app.git"
-  },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "dotenv": "^17.2.3"
+  "dependencies": {},
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
