@@ -11,6 +11,9 @@ dependencies:
     sdk: flutter
   firebase_core: ^2.24.2
   cloud_firestore: ^4.14.0
+  firebase_auth: ^4.16.0         # AGGIUNGI QUESTA
+  shared_preferences: ^2.2.2      # AGGIUNGI QUESTA
+  uuid: ^4.2.1                   # AGGIUNGI QUESTA
   intl: ^0.18.1
   cupertino_icons: ^1.0.2
 

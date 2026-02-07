@@ -187,10 +187,24 @@ void main() async {
 
 class SmartChargeApp extends StatelessWidget {
   const SmartChargeApp({super.key});
-  
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'SmartCharge',
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        primarySwatch: Colors.cyan,
+      ),
+      home: const Dashboard(),
+    );
+  }
+} // <--- Questa graffa mancava e chiude SmartChargeApp
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
+
   @override
   State<Dashboard> createState() => _DashboardState();
 }
