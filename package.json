@@ -1,15 +1,7 @@
 {
   "name": "smartcharge_app",
   "version": "1.0.0",
-  "description": "SmartCharge App deployment on Vercel",
-  "main": "index.js",
   "scripts": {
-    "build": "if [ ! -d \"$HOME/flutter\" ]; then git clone https://github.com/flutter/flutter.git --depth 1 -b stable $HOME/flutter; fi && export PATH=\"$HOME/flutter/bin:$PATH\" && flutter precache --web && flutter pub get && flutter build web --release --dart-define=FLUTTER_WEB_RENDERER=html",
-    "install": "npm install"
-  },
-  "dependencies": {},
-  "devDependencies": {},
-  "engines": {
-    "node": ">=18.0.0"
+    "build": "if [ ! -d \"$HOME/flutter\" ]; then git clone https://github.com/flutter/flutter.git --depth 1 -b stable $HOME/flutter; fi && export PATH=\"$HOME/flutter/bin:$PATH\" && flutter config --enable-web && flutter pub get && flutter build web --release --no-tree-shake-icons"
   }
 }
