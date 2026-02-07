@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
+<<<<<<< HEAD
         android:label="smartcharge_app"
+=======
+        android:label="Smart Charge"
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

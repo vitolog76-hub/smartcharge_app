@@ -1,1 +1,9 @@
 .vercel
+<<<<<<< HEAD
+=======
+.env
+.env.local
+node_modules/
+.DS_Store
+**/.DS_Store
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)

@@ -21,5 +21,12 @@
   "bugs": {
     "url": "https://github.com/vitolog76-hub/smartcharge_app/issues"
   },
+<<<<<<< HEAD
   "homepage": "https://github.com/vitolog76-hub/smartcharge_app#readme"
+=======
+  "homepage": "https://github.com/vitolog76-hub/smartcharge_app#readme",
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  }
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
 }

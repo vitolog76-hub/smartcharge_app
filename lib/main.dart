@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+import 'package:http/http.dart' as http;
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -251,12 +255,48 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+<<<<<<< HEAD
+=======
+    super.initState();
+    _loadData();
+    // Recupera il SoC appena apri l'app
+    _fetchRealSoc();
+    // Poi lo aggiorna ogni 5 minuti (300 secondi)
+    Timer.periodic(const Duration(seconds: 300), (timer) {
+      _fetchRealSoc();
+    });
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
     _loadData();
     _fetchRemoteModels(); 
     _clockTimer = Timer.periodic(const Duration(milliseconds: 100), (t) => _updateClock());
     _bgController = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
   }
+<<<<<<< HEAD
 
+=======
+  
+  Future<void> _fetchRealSoc() async {
+  try {
+    // Chiamata interna a Vercel: sicura, veloce e senza blocchi CORS
+    final response = await http.get(Uri.parse('/api/get-soc'));
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final double realSoc = data['energy'][0]['level'].toDouble();
+
+      setState(() {
+        currentSoc = realSoc;
+      });
+      print("🎯 SmartCharge Pro - SoC Ricevuto: $realSoc%");
+    } else {
+      print("⚠️ Errore dal ponte API");
+    }
+  } catch (e) {
+    print("❌ Errore di connessione: $e");
+  }
+}
+  
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
   void _fetchRemoteModels() async {
     try {
       final snapshot = await FirebaseFirestore.instance.collection('ev_models').orderBy('brand').get();
@@ -704,7 +744,12 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
           Container(color: const Color(0xFF020F16)),
           AnimatedBuilder(animation: _bgController, builder: (context, child) => CustomPaint(size: const Size(double.infinity, 115), painter: TechFlowPainter((soc / 100).clamp(0.0, 1.0), batteryColor, _bgController.value, isCharging))),
           Center(child: Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+<<<<<<< HEAD
             Text(soc.toStringAsFixed(2).replaceFirst('.', ','), style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w200, color: Colors.white, letterSpacing: -1)),
+=======
+            // Qui visualizzerà il SoC REALE arrivato dal server
+            Text(soc.toStringAsFixed(1).replaceFirst('.', ','), style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w200, color: Colors.white, letterSpacing: -1)),
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
             const SizedBox(width: 4),
             const Text("%", style: TextStyle(fontSize: 20, color: Colors.white38)),
           ])),

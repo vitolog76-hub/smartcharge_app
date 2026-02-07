@@ -123,11 +123,24 @@
     },
     {
       "name": "flutter",
+<<<<<<< HEAD
       "rootUri": "file:///Users/giuseppevitolo/Development/flutter/packages/flutter",
+=======
+      "rootUri": "file:///Users/giuseppevitolo/development/flutter/packages/flutter",
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
+<<<<<<< HEAD
+=======
+      "name": "flutter_dotenv",
+      "rootUri": "file:///Users/giuseppevitolo/.pub-cache/hosted/pub.dev/flutter_dotenv-6.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
       "name": "flutter_lints",
       "rootUri": "file:///Users/giuseppevitolo/.pub-cache/hosted/pub.dev/flutter_lints-5.0.0",
       "packageUri": "lib/",
@@ -135,17 +148,40 @@
     },
     {
       "name": "flutter_test",
+<<<<<<< HEAD
       "rootUri": "file:///Users/giuseppevitolo/Development/flutter/packages/flutter_test",
+=======
+      "rootUri": "file:///Users/giuseppevitolo/development/flutter/packages/flutter_test",
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
       "name": "flutter_web_plugins",
+<<<<<<< HEAD
       "rootUri": "file:///Users/giuseppevitolo/Development/flutter/packages/flutter_web_plugins",
+=======
+      "rootUri": "file:///Users/giuseppevitolo/development/flutter/packages/flutter_web_plugins",
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
+<<<<<<< HEAD
+=======
+      "name": "http",
+      "rootUri": "file:///Users/giuseppevitolo/.pub-cache/hosted/pub.dev/http-1.6.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "http_parser",
+      "rootUri": "file:///Users/giuseppevitolo/.pub-cache/hosted/pub.dev/http_parser-4.1.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
       "name": "intl",
       "rootUri": "file:///Users/giuseppevitolo/.pub-cache/hosted/pub.dev/intl-0.19.0",
       "packageUri": "lib/",
@@ -273,13 +309,21 @@
     },
     {
       "name": "sky_engine",
+<<<<<<< HEAD
       "rootUri": "file:///Users/giuseppevitolo/Development/flutter/bin/cache/pkg/sky_engine",
+=======
+      "rootUri": "file:///Users/giuseppevitolo/development/flutter/bin/cache/pkg/sky_engine",
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
       "name": "source_span",
+<<<<<<< HEAD
       "rootUri": "file:///Users/giuseppevitolo/.pub-cache/hosted/pub.dev/source_span-1.10.1",
+=======
+      "rootUri": "file:///Users/giuseppevitolo/.pub-cache/hosted/pub.dev/source_span-1.10.2",
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
       "packageUri": "lib/",
       "languageVersion": "3.1"
     },
@@ -350,7 +394,11 @@
       "languageVersion": "3.3"
     },
     {
+<<<<<<< HEAD
       "name": "smartcharge_app",
+=======
+      "name": "smartcharge_pro",
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
       "rootUri": "../",
       "packageUri": "lib/",
       "languageVersion": "3.1"
@@ -358,7 +406,11 @@
   ],
   "generator": "pub",
   "generatorVersion": "3.10.8",
+<<<<<<< HEAD
   "flutterRoot": "file:///Users/giuseppevitolo/Development/flutter",
+=======
+  "flutterRoot": "file:///Users/giuseppevitolo/development/flutter",
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
   "flutterVersion": "3.38.9",
   "pubCache": "file:///Users/giuseppevitolo/.pub-cache"
 }

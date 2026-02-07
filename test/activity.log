@@ -1,0 +1,337 @@
+2026-02-07 01:49:53,280 :: INFO :: App version 3.5.7
+2026-02-07 01:49:53,280 :: ERROR :: No config file
+2026-02-07 01:50:04,029 :: INFO :: update_data
+2026-02-07 01:50:04,048 :: INFO :: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-02-07 01:50:04,048 :: INFO :: [33mPress CTRL+C to quit[0m
+2026-02-07 01:50:30,026 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "GET / HTTP/1.1" 200 -
+2026-02-07 01:50:30,048 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "GET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1" 200 -
+2026-02-07 01:50:30,050 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "GET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1" 200 -
+2026-02-07 01:50:30,483 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:50:30,484 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:50:30,485 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "GET /_favicon.ico?v=2.18.2 HTTP/1.1" 200 -
+2026-02-07 01:50:30,494 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:50:30,502 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "GET /config_login HTTP/1.1" 200 -
+2026-02-07 01:50:30,504 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "GET /config_login HTTP/1.1" 200 -
+2026-02-07 01:50:30,508 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "GET /assets/images/settings.svg HTTP/1.1" 200 -
+2026-02-07 01:50:30,514 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:50:30,515 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:50:30,543 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:50:30,545 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:50:30,552 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:50:30,556 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "[36mGET /assets/images/settings.svg HTTP/1.1[0m" 304 -
+2026-02-07 01:50:30,563 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:50:30,565 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "[35m[1mPOST /_dash-update-component HTTP/1.1[0m" 204 -
+2026-02-07 01:50:30,566 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:50:30] "[35m[1mPOST /_dash-update-component HTTP/1.1[0m" 204 -
+2026-02-07 01:52:18,051 :: INFO :: Initial setup...
+2026-02-07 01:52:34,593 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:52:34] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:52:37,502 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:52:37] "GET /config_connect?url=https://idpcvs.citroen.com/am/oauth2/authorize?client_id%3D5364defc-80e6-447b-bec6-4af8d1542cae%26redirect_uri%3Dmymacsdk%253A%252F%252Foauth2redirect%252Fit%26response_type%3Dcode%26scope%3Dopenid%2520profile%26state%3DocialhE-uNFw6qmlXLNR9w%26code_challenge%3DyJfN7sBJ4bxFn9kbW5jzluZ64HRbM4-k276fRqhGZL0%26code_challenge_method%3DS256 HTTP/1.1" 200 -
+2026-02-07 01:52:37,530 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:52:37] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:52:37,532 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:52:37] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:52:37,560 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:52:37] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:52:37,561 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:52:37] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:52:37,567 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:52:37] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:52:37,572 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:52:37] "[36mGET /assets/images/settings.svg HTTP/1.1[0m" 304 -
+2026-02-07 01:52:37,575 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:52:37] "[35m[1mPOST /_dash-update-component HTTP/1.1[0m" 204 -
+2026-02-07 01:54:06,532 :: INFO :: save config change
+2026-02-07 01:54:07,477 :: WARNING :: Can't get car model, please report an issue on github with your car model and first ten letter of your VIN : VR7CPZYA5S
+2026-02-07 01:54:07,477 :: INFO :: 
+Your vehicles: ["{'vin': 'VR7CPZYA5ST281107', 'vehicle_id': '1cbf133cb584731a6a596affcf123ffe75e55a240c128005f218dfa753a11b14c4b2e8e1f3edafe62ec3699abe6be33a3fda7fc1f34d2561460bdc3e7e9ca6285ef6139e969798a25b8023e59f97f2caacec76efcd0ad076f54ac7efbc3dbcac9', 'label': 'II', 'brand': 'Citroën', 'abrp_name': None, 'battery_power': 46, 'fuel_capacity': 0, 'max_elec_consumption': 70, 'max_fuel_consumption': 30}"]
+2026-02-07 01:54:07,478 :: INFO :: save config change
+2026-02-07 01:54:07,478 :: INFO :: App version 3.5.7
+2026-02-07 01:54:07,478 :: WARNING :: Can't get car model, please report an issue on github with your car model and first ten letter of your VIN : VR7CPZYA5S
+2026-02-07 01:54:08,537 :: WARNING :: Can't get car model, please report an issue on github with your car model and first ten letter of your VIN : VR7CPZYA5S
+2026-02-07 01:54:08,538 :: INFO :: ["{'vin': 'VR7CPZYA5ST281107', 'vehicle_id': '1cbf133cb584731a6a596affcf123ffe75e55a240c128005f218dfa753a11b14c4b2e8e1f3edafe62ec3699abe6be33a3fda7fc1f34d2561460bdc3e7e9ca6285ef6139e969798a25b8023e59f97f2caacec76efcd0ad076f54ac7efbc3dbcac9', 'label': 'unknown', 'brand': 'Citroën', 'abrp_name': None, 'battery_power': 46, 'fuel_capacity': 0, 'max_elec_consumption': 70, 'max_fuel_consumption': 30}"]
+2026-02-07 01:54:08,539 :: INFO :: save config change
+2026-02-07 01:54:08,541 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:54:08] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:54:10,534 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:54:10] "GET /config_otp HTTP/1.1" 200 -
+2026-02-07 01:54:10,552 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:54:10] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:54:10,555 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:54:10] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:54:10,587 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:54:10] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:54:10,589 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:54:10] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:54:10,597 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:54:10] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:54:10,602 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:54:10] "[36mGET /assets/images/settings.svg HTTP/1.1[0m" 304 -
+2026-02-07 01:54:10,610 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:54:10] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:54:10,612 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:54:10] "[35m[1mPOST /_dash-update-component HTTP/1.1[0m" 204 -
+2026-02-07 01:54:10,614 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:54:10] "[35m[1mPOST /_dash-update-component HTTP/1.1[0m" 204 -
+2026-02-07 01:54:13,286 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:54:13] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:55:07,298 :: WARNING :: remote_refresh_token isn't defined
+2026-02-07 01:55:08,549 :: INFO :: save config change
+2026-02-07 01:55:08,604 :: INFO :: save config change
+2026-02-07 01:55:08,890 :: INFO :: ask wakeup to VR7CPZYA5ST281107
+2026-02-07 01:55:08,890 :: INFO :: topic: psa/RemoteServices/from/cid/AC-ACNT200015313551/VehCharge/state: {'action': 'state'}
+2026-02-07 01:55:08,892 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:55:08] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:55:09,405 :: INFO :: Connected with result code {'session present': 0}
+2026-02-07 01:55:09,406 :: INFO :: subscribe to psa/RemoteServices/to/cid/AC-ACNT200015313551/#
+2026-02-07 01:55:09,406 :: INFO :: subscribe to psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107
+2026-02-07 01:55:09,778 :: INFO :: mqtt msg received: psa/RemoteServices/to/cid/AC-ACNT200015313551/VehCharge/state/ProcessManagement b'{"process_date":"2026-02-07T00:55:09Z","vin":"VR7CPZYA5ST281107","correlation_id":"1bb8c82cc79d41f685becf6162fb1c0f20260207005508890","process_code":"900","process_message":"[process.900.request.accepted.key]"}'
+2026-02-07 01:55:09,876 :: INFO :: mqtt msg received: psa/RemoteServices/to/cid/AC-ACNT200015313551/VehCharge/state/ProcessManagement b'{"process_date":"2026-02-07T00:55:09Z","vin":"VR7CPZYA5ST281107","correlation_id":"1bb8c82cc79d41f685becf6162fb1c0f20260207005508890","process_code":"901","process_message":"[process.901.vehicle.asleep.key]"}'
+2026-02-07 01:55:10,734 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:55:10] "GET / HTTP/1.1" 200 -
+2026-02-07 01:55:10,751 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:55:10] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:55:10,754 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:55:10] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:55:10,778 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:55:10] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:55:10,779 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:55:10] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:55:10,787 :: WARNING :: Failed to generate figure, there is probably not enough data yet
+2026-02-07 01:55:10,790 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:55:10] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:55:10,796 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:55:10] "[36mGET /assets/images/settings.svg HTTP/1.1[0m" 304 -
+2026-02-07 01:55:10,802 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:55:10] "GET /control?header=false HTTP/1.1" 200 -
+2026-02-07 01:55:10,810 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:55:10] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:55:10,812 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:55:10] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:55:10,829 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:55:10] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:55:10,835 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:55:10] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:55:10,842 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:55:10] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:55:21,081 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T00:55:14Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":4,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":4,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 01:55:21,082 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 01:55:21,105 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T00:55:13Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":3,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":2,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 01:55:21,106 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 01:55:21,106 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T00:55:15Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":4,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":5,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 01:55:21,106 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 01:55:21,107 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T00:55:13Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":0,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":1,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 01:55:21,107 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 01:55:21,107 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T00:55:13Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":4,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":3,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 01:55:21,108 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 01:55:21,108 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T00:55:18Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":3,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":6,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 01:55:21,108 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 01:55:21,109 :: INFO :: mqtt msg received: psa/RemoteServices/to/cid/AC-ACNT200015313551/VehCharge/state/ProcessManagement b'{"process_date":"2026-02-07T00:55:21Z","vin":"VR7CPZYA5ST281107","correlation_id":"1bb8c82cc79d41f685becf6162fb1c0f20260207005508890","process_code":"903","process_message":"[process.903.request.forwarded.to.vehicle.key]"}'
+2026-02-07 01:55:21,115 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T00:55:20Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":4,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":7,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 01:55:21,115 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 01:55:26,267 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T00:55:25Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":4,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":8,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 01:55:26,268 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 01:55:26,356 :: INFO :: mqtt msg received: psa/RemoteServices/to/cid/AC-ACNT200015313551/VehCharge/state b'{"resp_date":"2026-02-07T00:55:26Z","vin":"VR7CPZYA5ST281107","correlation_id":"1bb8c82cc79d41f685becf6162fb1c0f20260207005508890","return_code":"0","resp_data":{}}'
+2026-02-07 01:56:25,872 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:25] "GET / HTTP/1.1" 200 -
+2026-02-07 01:56:25,889 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:25] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:56:25,891 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:25] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:56:25,919 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:25] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:56:25,920 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:25] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:56:25,928 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:25] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:56:25,934 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:25] "[36mGET /assets/images/settings.svg HTTP/1.1[0m" 304 -
+2026-02-07 01:56:25,939 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:25] "GET /control?header=false HTTP/1.1" 200 -
+2026-02-07 01:56:25,944 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:25] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:56:25,945 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:25] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:56:25,963 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:25] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:56:25,965 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:25] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:56:25,970 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:25] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:56:29,868 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:29] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:56:29,973 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:29] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:56:29,975 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:29] "[35m[1mPOST /_dash-update-component HTTP/1.1[0m" 204 -
+2026-02-07 01:56:29,980 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:56:29] "[35m[1mPOST /_dash-update-component HTTP/1.1[0m" 204 -
+2026-02-07 01:57:15,049 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:15] "GET /config HTTP/1.1" 200 -
+2026-02-07 01:57:15,064 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:15] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:57:15,066 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:15] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:57:15,095 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:15] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:57:15,096 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:15] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:57:15,098 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:15] "GET /_favicon.ico?v=2.18.2 HTTP/1.1" 200 -
+2026-02-07 01:57:15,104 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:15] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:57:15,109 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:15] "[36mGET /assets/images/settings.svg HTTP/1.1[0m" 304 -
+2026-02-07 01:57:15,122 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:15] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:57:15,125 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:15] "[35m[1mPOST /_dash-update-component HTTP/1.1[0m" 204 -
+2026-02-07 01:57:15,127 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:15] "[35m[1mPOST /_dash-update-component HTTP/1.1[0m" 204 -
+2026-02-07 01:57:16,416 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:16] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:57:16,432 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:16] "GET /control?header=false HTTP/1.1" 200 -
+2026-02-07 01:57:16,440 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:16] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:57:16,443 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:16] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:57:16,469 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:16] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:57:16,477 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:16] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:57:16,484 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:16] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:57:23,049 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:23] "GET / HTTP/1.1" 200 -
+2026-02-07 01:57:23,064 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:23] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:57:23,066 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:23] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:57:23,094 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:23] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:57:23,095 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:23] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:57:23,097 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:23] "GET /_favicon.ico?v=2.18.2 HTTP/1.1" 200 -
+2026-02-07 01:57:23,102 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:23] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:57:23,108 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:23] "[36mGET /assets/images/settings.svg HTTP/1.1[0m" 304 -
+2026-02-07 01:57:23,113 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:23] "GET /control?header=false HTTP/1.1" 200 -
+2026-02-07 01:57:23,119 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:23] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:57:23,121 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:23] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:57:23,138 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:23] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:57:23,144 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:23] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:57:23,151 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:57:23] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:58:16,333 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:16] "GET / HTTP/1.1" 200 -
+2026-02-07 01:58:16,347 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:16] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:58:16,350 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:16] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:58:16,379 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:16] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:58:16,381 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:16] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:58:16,384 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:16] "GET /_favicon.ico?v=2.18.2 HTTP/1.1" 200 -
+2026-02-07 01:58:16,388 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:16] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:58:16,393 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:16] "[36mGET /assets/images/settings.svg HTTP/1.1[0m" 304 -
+2026-02-07 01:58:16,399 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:16] "GET /control?header=false HTTP/1.1" 200 -
+2026-02-07 01:58:16,404 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:16] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:58:16,406 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:16] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:58:16,423 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:16] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:58:16,425 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:16] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:58:16,430 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:16] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:58:17,701 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:17] "GET / HTTP/1.1" 200 -
+2026-02-07 01:58:17,715 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:17] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:58:17,717 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:17] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:58:17,744 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:17] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:58:17,745 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:17] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:58:17,747 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:17] "GET /_favicon.ico?v=2.18.2 HTTP/1.1" 200 -
+2026-02-07 01:58:17,753 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:17] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:58:17,760 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:17] "[36mGET /assets/images/settings.svg HTTP/1.1[0m" 304 -
+2026-02-07 01:58:17,764 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:17] "GET /control?header=false HTTP/1.1" 200 -
+2026-02-07 01:58:17,769 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:17] "[36mGET /assets/99_custom_overides.css?m=1770425180.8159814 HTTP/1.1[0m" 304 -
+2026-02-07 01:58:17,774 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:17] "[36mGET /assets/clientside.js?m=1770425180.8161185 HTTP/1.1[0m" 304 -
+2026-02-07 01:58:17,793 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:17] "GET /_dash-layout HTTP/1.1" 200 -
+2026-02-07 01:58:17,797 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:17] "GET /_dash-dependencies HTTP/1.1" 200 -
+2026-02-07 01:58:17,804 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:17] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:58:22,734 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:22] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 01:58:23,634 :: INFO :: 127.0.0.1 - - [07/Feb/2026 01:58:23] "POST /_dash-update-component HTTP/1.1" 200 -
+2026-02-07 02:08:37,019 :: INFO :: App version 3.5.7
+2026-02-07 02:08:37,135 :: WARNING :: Can't get car model, please report an issue on github with your car model and first ten letter of your VIN : VR7CPZYA5S
+2026-02-07 02:08:38,455 :: WARNING :: Can't get car model, please report an issue on github with your car model and first ten letter of your VIN : VR7CPZYA5S
+2026-02-07 02:08:38,456 :: INFO :: ["{'vin': 'VR7CPZYA5ST281107', 'vehicle_id': '1cbf133cb584731a6a596affcf123ffe75e55a240c128005f218dfa753a11b14c4b2e8e1f3edafe62ec3699abe6be33a3fda7fc1f34d2561460bdc3e7e9ca6285ef6139e969798a25b8023e59f97f2caacec76efcd0ad076f54ac7efbc3dbcac9', 'label': 'unknown', 'brand': 'Citroën', 'abrp_name': None, 'battery_power': 46, 'fuel_capacity': 0, 'max_elec_consumption': 70, 'max_fuel_consumption': 30}"]
+2026-02-07 02:08:39,501 :: INFO :: ask wakeup to VR7CPZYA5ST281107
+2026-02-07 02:08:39,502 :: INFO :: topic: psa/RemoteServices/from/cid/AC-ACNT200015313551/VehCharge/state: {'action': 'state'}
+2026-02-07 02:08:39,988 :: INFO :: Connected with result code {'session present': 0}
+2026-02-07 02:08:39,989 :: INFO :: subscribe to psa/RemoteServices/to/cid/AC-ACNT200015313551/#
+2026-02-07 02:08:39,990 :: INFO :: subscribe to psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107
+2026-02-07 02:08:40,399 :: INFO :: save config change
+2026-02-07 02:08:40,743 :: INFO :: mqtt msg received: psa/RemoteServices/to/cid/AC-ACNT200015313551/VehCharge/state/ProcessManagement b'{"process_date":"2026-02-07T01:08:40Z","vin":"VR7CPZYA5ST281107","correlation_id":"9f81f32ce3b24aab93e2941a5eaa08c220260207010840396","process_code":"900","process_message":"[process.900.request.accepted.key]"}'
+2026-02-07 02:08:41,007 :: INFO :: mqtt msg received: psa/RemoteServices/to/cid/AC-ACNT200015313551/VehCharge/state/ProcessManagement b'{"process_date":"2026-02-07T01:08:40Z","vin":"VR7CPZYA5ST281107","correlation_id":"9f81f32ce3b24aab93e2941a5eaa08c220260207010840396","process_code":"901","process_message":"[process.901.vehicle.asleep.key]"}'
+2026-02-07 02:08:41,046 :: INFO :: update_data
+2026-02-07 02:08:41,236 :: INFO :: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-02-07 02:08:41,236 :: INFO :: [33mPress CTRL+C to quit[0m
+2026-02-07 02:08:51,386 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:08:44Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":0,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":1,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:08:51,387 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 02:08:51,396 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:08:44Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":3,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":2,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:08:51,396 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 02:08:51,397 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:08:45Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":4,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":4,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:08:51,397 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 02:08:51,402 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:08:45Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":4,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":3,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:08:51,402 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 02:08:51,407 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:08:46Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":4,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":5,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:08:51,408 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 02:08:51,476 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:08:49Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":3,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":6,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:08:51,477 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 02:08:51,479 :: INFO :: mqtt msg received: psa/RemoteServices/to/cid/AC-ACNT200015313551/VehCharge/state/ProcessManagement b'{"process_date":"2026-02-07T01:08:51Z","vin":"VR7CPZYA5ST281107","correlation_id":"9f81f32ce3b24aab93e2941a5eaa08c220260207010840396","process_code":"903","process_message":"[process.903.request.forwarded.to.vehicle.key]"}'
+2026-02-07 02:08:56,623 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:08:56Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":4,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":7,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:08:56,624 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 02:08:56,716 :: INFO :: mqtt msg received: psa/RemoteServices/to/cid/AC-ACNT200015313551/VehCharge/state b'{"resp_date":"2026-02-07T01:08:56Z","vin":"VR7CPZYA5ST281107","correlation_id":"9f81f32ce3b24aab93e2941a5eaa08c220260207010840396","return_code":"0","resp_data":{}}'
+2026-02-07 02:11:09,913 :: INFO :: App version 3.5.7
+2026-02-07 02:11:10,026 :: WARNING :: Can't get car model, please report an issue on github with your car model and first ten letter of your VIN : VR7CPZYA5S
+2026-02-07 02:11:11,323 :: WARNING :: Can't get car model, please report an issue on github with your car model and first ten letter of your VIN : VR7CPZYA5S
+2026-02-07 02:11:11,325 :: INFO :: ["{'vin': 'VR7CPZYA5ST281107', 'vehicle_id': '1cbf133cb584731a6a596affcf123ffe75e55a240c128005f218dfa753a11b14c4b2e8e1f3edafe62ec3699abe6be33a3fda7fc1f34d2561460bdc3e7e9ca6285ef6139e969798a25b8023e59f97f2caacec76efcd0ad076f54ac7efbc3dbcac9', 'label': 'unknown', 'brand': 'Citroën', 'abrp_name': None, 'battery_power': 46, 'fuel_capacity': 0, 'max_elec_consumption': 70, 'max_fuel_consumption': 30}"]
+2026-02-07 02:11:12,515 :: INFO :: ask wakeup to VR7CPZYA5ST281107
+2026-02-07 02:11:12,516 :: INFO :: topic: psa/RemoteServices/from/cid/AC-ACNT200015313551/VehCharge/state: {'action': 'state'}
+2026-02-07 02:11:12,868 :: INFO :: Connected with result code {'session present': 0}
+2026-02-07 02:11:12,869 :: INFO :: subscribe to psa/RemoteServices/to/cid/AC-ACNT200015313551/#
+2026-02-07 02:11:12,869 :: INFO :: subscribe to psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107
+2026-02-07 02:11:13,422 :: INFO :: save config change
+2026-02-07 02:11:13,761 :: INFO :: mqtt msg received: psa/RemoteServices/to/cid/AC-ACNT200015313551/VehCharge/state/ProcessManagement b'{"process_date":"2026-02-07T01:11:13Z","vin":"VR7CPZYA5ST281107","correlation_id":"dc53d2b3c371421099e4a3776bed892420260207011113418","process_code":"900","process_message":"[process.900.request.accepted.key]"}'
+2026-02-07 02:11:13,947 :: INFO :: mqtt msg received: psa/RemoteServices/to/cid/AC-ACNT200015313551/VehCharge/state/ProcessManagement b'{"process_date":"2026-02-07T01:11:13Z","vin":"VR7CPZYA5ST281107","correlation_id":"dc53d2b3c371421099e4a3776bed892420260207011113418","process_code":"901","process_message":"[process.901.vehicle.asleep.key]"}'
+2026-02-07 02:11:13,986 :: INFO :: update_data
+2026-02-07 02:11:14,171 :: INFO :: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-02-07 02:11:14,171 :: INFO :: [33mPress CTRL+C to quit[0m
+2026-02-07 02:11:27,275 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:11:19Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":4,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":5,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:11:27,277 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 02:11:27,286 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:11:18Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":4,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":3,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:11:27,286 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 02:11:27,287 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:11:17Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":0,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":1,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:11:27,287 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 02:11:27,288 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:11:18Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":3,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":2,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:11:27,288 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 02:11:27,294 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:11:24Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":4,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":7,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:11:27,294 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 02:11:27,299 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:11:22Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":3,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":6,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:11:27,300 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 02:11:27,307 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:11:18Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":4,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":4,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:11:27,307 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'
+2026-02-07 02:11:27,368 :: INFO :: mqtt msg received: psa/RemoteServices/to/cid/AC-ACNT200015313551/VehCharge/state/ProcessManagement b'{"process_date":"2026-02-07T01:11:27Z","vin":"VR7CPZYA5ST281107","correlation_id":"dc53d2b3c371421099e4a3776bed892420260207011113418","process_code":"903","process_message":"[process.903.request.forwarded.to.vehicle.key]"}'
+2026-02-07 02:11:32,514 :: INFO :: mqtt msg received: psa/RemoteServices/to/cid/AC-ACNT200015313551/VehCharge/state b'{"resp_date":"2026-02-07T01:11:32Z","vin":"VR7CPZYA5ST281107","correlation_id":"dc53d2b3c371421099e4a3776bed892420260207011113418","return_code":"0","resp_data":{}}'
+2026-02-07 02:11:32,622 :: INFO :: mqtt msg received: psa/RemoteServices/events/MPHRTServices/VR7CPZYA5ST281107 b'{"date":"2026-02-07T01:11:31Z","etat_res_elec":0,"precond_state":{"available":1,"programs":{"program1":{"hour":20,"minute":58,"on":0,"day":[1,1,1,0,1,1,1]},"program2":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program3":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]},"program4":{"hour":34,"minute":7,"on":0,"day":[0,0,0,0,0,0,0]}},"asap":0,"status":0,"aff":1},"charging_state":{"program":{"hour":3,"minute":38},"available":1,"remaining_time":2047,"rate":510,"cable_detected":1,"soc_batt":64,"autonomy_zev":192,"type":0,"aff":1,"hmi_state":0,"mode":2},"stolen_state":1,"vin":"VR7CPZYA5ST281107","reason":4,"signal_quality":31,"sev_stop_date":"2026-02-06T15:36:48Z","fds":["NDR03","NAE01","NBM01","NAU01","NCG01","NAO01","NAS01"],"sev_state":0,"obj_counter":8,"privacy_customer":0,"privacy_applicable":0,"privacy_applicable_max":3}'
+2026-02-07 02:11:32,623 :: ERROR :: on_mqtt_message:
+Traceback (most recent call last):
+  File "/Users/giuseppevitolo/Library/Python/3.9/lib/python/site-packages/psa_car_controller/psa/RemoteClient.py", line 96, in _fix_not_updated_api
+    if car and car.status.get_energy('Electric').charging.status != INPROGRESS:
+AttributeError: 'NoneType' object has no attribute 'get_energy'

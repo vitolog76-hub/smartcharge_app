@@ -1,0 +1,19 @@
+{
+    "abrp": {
+        "abrp_enable_vin": [],
+        "token": ""
+    },
+    "client_id": "5364defc-80e6-447b-bec6-4af8d1542cae",
+    "client_secret": "iE0cD8bB0yJ0dS6rO3nN1hI2wU7uA5xR4gP7lD6vM0oH0nS8dN",
+    "co2_signal_api": null,
+    "country_code": "IT",
+    "customer_id": "AC-ACNT200015313551",
+    "proxies": {
+        "http": "",
+        "https": ""
+    },
+    "realm": "clientsB2CCitroen",
+    "refresh_token": "426a17c9-095d-419d-bdc8-822d47d204fc",
+    "remote_refresh_token": "337468ae-c3cb-4491-9a8f-01b555297a31",
+    "weather_api": null
+}

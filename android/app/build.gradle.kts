@@ -21,7 +21,11 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+<<<<<<< HEAD
         applicationId = "com.example.smartcharge_app"
+=======
+        applicationId = "com.giuseppe.smartcharge.pro"
+>>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
