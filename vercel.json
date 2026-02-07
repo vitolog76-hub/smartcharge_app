@@ -1,12 +1,6 @@
 {
-  "version": 2,
-  "functions": {
-    "api/*.js": {
-      "runtime": "vercel-node@latest"
-    }
-  },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  "framework": "flutter",
+  "installCommand": "flutter precache",
+  "buildCommand": "flutter build web --release",
+  "outputDirectory": "build/web"
 }
