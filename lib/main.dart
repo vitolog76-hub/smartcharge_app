@@ -175,7 +175,7 @@ void main() async {
       options: const FirebaseOptions(
         apiKey: "AIzaSyAjKI3YdGvyjTcjX9NH5EZBxS5eGN1saf4",
         authDomain: "smartcharge-2406b.firebaseapp.com",
-        projectId: "smartcharge-2406b",
+        projectId: "smartcharge-c5b34",
         storageBucket: "smartcharge-2406b.firebasestorage.app",
         messagingSenderId: "5458306840",
         appId: "1:5458306840:web:c36bfc00b2271e51f5206d",
@@ -190,13 +190,7 @@ class SmartChargeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark, 
-        scaffoldBackgroundColor: const Color(0xFF010A0F), 
-        primaryColor: Colors.cyanAccent, 
-        useMaterial3: true,
-      ),
+      // ... lascia tutto come era ...
       home: const Dashboard(),
     );
   }
@@ -212,9 +206,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   String currentLang = 'it'; // Default
   String userId = "";
   String selectedVehicle = "Manuale / Altro";
-  String t(String key) {
-  return localizedValues[currentLang]?[key] ?? key;
-}
+  String t(String key) => localizedValues[currentLang]?[key] ?? key;
+
   List<Map<String, dynamic>> remoteEvDatabase = []; 
   
   double batteryCap = 44.0; 
@@ -222,11 +215,11 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   double costPerKwh = 0.25;
   double socStart = 20.0;
   double socTarget = 80.0;
-  double currentSoc = 20.0;
+  double currentSoc = 20.0; // Verrà aggiornato in tempo reale da Firestore
   double energySession = 0.0;
   TimeOfDay targetTimeInput = const TimeOfDay(hour: 7, minute: 0);
   
-  DateTime? lockedStartDate; // Aggiungi questa qui
+  DateTime? lockedStartDate;
   DateTime now = DateTime.now();
   DateTime? fullStartDate;
   DateTime? fullEndDate;
@@ -234,7 +227,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   bool isActive = false;
   bool isWaiting = false;
   bool isCharging = false;
-  bool priorityBattery = true; // Di default diamo priorità alla carica completa
+  bool priorityBattery = true; 
   Timer? _clockTimer;
   DateTime? _lastTick;
   late AnimationController _bgController;
@@ -256,16 +249,105 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+    _loadData();
+    _fetchRemoteModels();
+    // Il timer del SoC è stato rimosso perché ora usiamo lo StreamBuilder
+    _clockTimer = Timer.periodic(const Duration(milliseconds: 500), (t) => _updateClock());
+    _bgController = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
+  }
+
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    _bgController.dispose();
+    super.dispose();
+  }
+
+  // Metodo per scaricare i modelli (Firestore)
+  void _fetchRemoteModels() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance.collection('ev_models').orderBy('brand').get();
+      if (snapshot.docs.isNotEmpty) {
+        setState(() {
+          remoteEvDatabase = snapshot.docs.map((doc) => doc.data()).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint("Errore modelli: $e");
+    }
+  }
+
+  // --- IL METODO BUILD CON LO STREAM DI DATI DAL MAC ---
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('veicoli')
+          .doc('VR7CPZYA5ST281107') // Il tuo VIN
+          .snapshots(),
+      builder: (context, snapshot) {
+        // Se arrivano dati dal Mac, aggiorniamo il SoC istantaneamente
+        if (snapshot.hasData && snapshot.data!.exists) {
+          var cloudData = snapshot.data!.data() as Map<String, dynamic>;
+          currentSoc = (cloudData['soc'] as num).toDouble();
+        }
+
+        Color statusCol = isCharging ? Colors.greenAccent : (isWaiting ? Colors.orangeAccent : Colors.cyanAccent);
+
+        return Scaffold(
+          body: Stack(
+            children: [
+              _liquidBackground(),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                      _header(),
+                      _compactMainRow(),
+                      _statusBadge(statusCol, isCharging ? t('status_charging') : (isWaiting ? t('status_wait') : t('status_off'))),
+                      const SizedBox(height: 25),
+                      _premiumBatterySection(currentSoc), // <--- Qui vedrai il 64%!
+                      _energyEstimates(),
+                      _paramSliders(),
+                      const Spacer(),
+                      _controls(),
+                      const SizedBox(height: 15),
+                      _actionButtons(),
+                      const SizedBox(height: 10),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  
+
+  @override
+  void initState() {
+    super.initState();
+>>>>>>> 45acec0 (Integrazione Firebase per SoC in tempo reale)
     super.initState();
     _loadData();
     // Recupera il SoC appena apri l'app
-    _fetchRealSoc();
+    // _fetchRealSoc();
     // Poi lo aggiorna ogni 5 minuti (300 secondi)
+<<<<<<< HEAD
     Timer.periodic(const Duration(seconds: 300), (timer) {
       _fetchRealSoc();
     });
 >>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
+=======
+   
+>>>>>>> 45acec0 (Integrazione Firebase per SoC in tempo reale)
     _loadData();
     _fetchRemoteModels(); 
     _clockTimer = Timer.periodic(const Duration(milliseconds: 100), (t) => _updateClock());
@@ -275,26 +357,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
 =======
   
-  Future<void> _fetchRealSoc() async {
-  try {
-    // Chiamata interna a Vercel: sicura, veloce e senza blocchi CORS
-    final response = await http.get(Uri.parse('/api/get-soc'));
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final double realSoc = data['energy'][0]['level'].toDouble();
-
-      setState(() {
-        currentSoc = realSoc;
-      });
-      print("🎯 SmartCharge Pro - SoC Ricevuto: $realSoc%");
-    } else {
-      print("⚠️ Errore dal ponte API");
-    }
-  } catch (e) {
-    print("❌ Errore di connessione: $e");
-  }
-}
+  
   
 >>>>>>> c44e1c6 (Sblocco definitivo: rimosso APK e attivato ponte API)
   void _fetchRemoteModels() async {
@@ -687,31 +750,17 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     );
   }
 
-  Widget _glassCircle(double s, Color c) => Container(width: s, height: s, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [c, c.withOpacity(0.1), Colors.transparent], stops: const [0.0, 0.45, 1.0])));
-
-  @override
-  Widget build(BuildContext context) {
-    Color statusCol = isCharging ? Colors.greenAccent : (isWaiting ? Colors.orangeAccent : Colors.cyanAccent);
-    return Scaffold(
-      body: Stack(children: [
-        _liquidBackground(),
-        SafeArea(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
-          _header(),
-          _compactMainRow(),
-          _statusBadge(statusCol, isCharging ? t('status_charging') : (isWaiting ? t('status_wait') : t('status_off'))),
-          const SizedBox(height: 25),
-          _premiumBatterySection(currentSoc), 
-          _energyEstimates(),
-          _paramSliders(), 
-          const Spacer(),
-          _controls(),
-          const SizedBox(height: 15),
-          _actionButtons(),
-          const SizedBox(height: 10),
-        ]))),
-      ]),
-    );
-  }
+  Widget _glassCircle(double s, Color c) => Container(
+    width: s, 
+    height: s, 
+    decoration: BoxDecoration(
+      shape: BoxShape.circle, 
+      gradient: RadialGradient(
+        colors: [c, c.withOpacity(0.1), Colors.transparent], 
+        stops: const [0.0, 0.45, 1.0]
+      )
+    )
+  );
 
   Widget _header() => Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
     IconButton(icon: const Icon(Icons.settings_outlined, color: Colors.white30), onPressed: _showSettings),
