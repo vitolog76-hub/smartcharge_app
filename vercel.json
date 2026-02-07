@@ -1,0 +1,5 @@
+{
+  "installCommand": "if [ ! -d \"$HOME/flutter\" ]; then git clone https://github.com/flutter/flutter.git --depth 1 -b stable $HOME/flutter; fi",
+  "buildCommand": "npm run build",
+  "outputDirectory": "build/web"
+}
