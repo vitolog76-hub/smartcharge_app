@@ -1250,40 +1250,8 @@ void _showHistory() {
                           return const Center(child: Text("Nessun dato", style: TextStyle(color: Colors.white38)));
                         }
 
-                        // Funzione veloce per sommare i kWh di un mese specifico
-double sommaKwhMese(int sottraiMesi) {
-  final target = DateTime(ora.year, ora.month - sottraiMesi);
-  return history.where((log) {
-    final d = DateTime.parse(log['date']);
-    return d.month == target.month && d.year == target.year;
-  }).fold(0.0, (sum, log) => sum + (double.tryParse(log['kwh'].toString()) ?? 0.0));
-}
-
-final kwhAttuale = sommaKwhMese(0);
-final kwhScorso = sommaKwhMese(1);
-final kwhDueFa = sommaKwhMese(2);
-                        
                         return ListView(
                           children: [
-                            Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 15),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: Colors.white10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildStat("2 MESI FA", kwhDueFa),
-            _buildStat("MESE SCORSO", kwhScorso),
-            _buildStat("ATTUALE", kwhAttuale, active: true),
-          ],
-        ),
-      ),
-    ),
                             // --- SEZIONE QUESTO MESE ---
                             if (ricaricheMeseCorrente.isNotEmpty) ...[
                               const Padding(
@@ -1544,121 +1512,30 @@ String _getNomeFascia(int minuti) {
 Future<void> _generatePDF() async {
   final pdf = pw.Document();
   final DateTime ora = DateTime.now();
-  double granTotaleKwh = 0;
-  double granTotaleEuro = 0;
-
-  // 1. Raggruppiamo i dati per Mese
-  Map<String, List<Map<String, dynamic>>> raggruppato = {};
-  
-  // Ordiniamo history per data per avere i mesi in ordine nel PDF
-  history.sort((a, b) => DateTime.parse(a['date']).compareTo(DateTime.parse(b['date'])));
-
-  for (var log in history) {
-    DateTime d = DateTime.parse(log['date']);
-    if (d.year == _selectedYear) {
-      String mese = DateFormat('MMMM', 'it').format(d).toUpperCase();
-      if (!raggruppato.containsKey(mese)) raggruppato[mese] = [];
-      raggruppato[mese]!.add(log);
-      
-      // Calcolo per il Gran Totale Finale
-      granTotaleKwh += double.tryParse(log['kwh'].toString()) ?? 0;
-      granTotaleEuro += double.tryParse(log['cost'].toString()) ?? 0;
-    }
-  }
 
   pdf.addPage(
     pw.MultiPage(
-      pageFormat: PdfPageFormat.a4,
       build: (pw.Context context) => [
-        // INTESTAZIONE
-        pw.Header(
-          level: 0, 
-          child: pw.Text("REPORT ANNUALE ENERGIA - $_selectedYear", 
-          style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold))
-        ),
+        pw.Header(level: 0, child: pw.Text("REPORT RICARICHE SMARTCHARGE", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
         pw.Text("ID Utente: $userId"),
-        pw.Text("Generato il: ${DateFormat('dd/MM/yyyy HH:mm').format(ora)}"),
+        pw.Text("Data Report: ${DateFormat('dd/MM/yyyy HH:mm').format(ora)}"),
         pw.SizedBox(height: 20),
-
-        // TABELLE MENSILI
-        ...raggruppato.entries.map((entry) {
-          double meseKwh = 0;
-          double meseEuro = 0;
-          for (var item in entry.value) {
-            meseKwh += double.tryParse(item['kwh'].toString()) ?? 0;
-            meseEuro += double.tryParse(item['cost'].toString()) ?? 0;
-          }
-
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(vertical: 5),
-                child: pw.Text(entry.key, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-              ),
-              pw.TableHelper.fromTextArray(
-                headers: ['Data', 'Gestore', 'kWh', 'Costo (EUR)'], // Usiamo EUR per sicurezza
-                data: entry.value.map((log) {
-                  return [
-                    DateFormat('dd/MM/yy').format(DateTime.parse(log['date'])),
-                    log['provider'] ?? '-',
-                    log['kwh'].toString(),
-                    "${log['cost']} " // Aggiungi uno spazio invece del simbolo se dà problemi
-                  ];
-                }).toList(),
-              ),
-              pw.Container(
-  alignment: pw.Alignment.centerRight,
-  padding: const pw.EdgeInsets.only(top: 5, bottom: 15),
-  child: pw.Text(
-    "Subtotale ${entry.key}: ${meseKwh.toStringAsFixed(2)} kWh | EUR ${meseEuro.toStringAsFixed(2)}",
-    style: pw.TextStyle(
-      fontSize: 9, 
-      font: pw.Font.courierOblique(),),
-                ),
-              ),
-            ],
-          );
-        }).toList(),
-
-        pw.Divider(),
-        // GRAN TOTALE FINALE
-        pw.Container(
-          alignment: pw.Alignment.centerRight,
-          padding: const pw.EdgeInsets.only(top: 10),
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.end,
-            children: [
-              pw.Text("TOTALE GENERALE ANNO $_selectedYear", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
-              pw.SizedBox(height: 5),
-              pw.Text("Energia Totale: ${granTotaleKwh.toStringAsFixed(2)} kWh", style: pw.TextStyle(fontSize: 12)),
-              pw.Text("Spesa Totale: EUR ${granTotaleEuro.toStringAsFixed(2)}", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-            ],
-          ),
+        pw.TableHelper.fromTextArray(
+          headers: ['Data', 'Gestore', 'kWh', 'Costo'],
+          data: history.map((log) {
+            return [
+              log['date'].toString().substring(0, 10),
+              log['provider'] ?? 'Generico',
+              "${log['kwh']} kWh",
+              "${log['cost']} €"
+            ];
+          }).toList(),
         ),
       ],
     ),
   );
 
   await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
-}
-Widget _buildStat(String label, double valore, {bool active = false}) {
-  return Column(
-    children: [
-      Text(label, 
-        style: const TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 5),
-      Text(
-        valore.toStringAsFixed(1),
-        style: TextStyle(
-          color: active ? Colors.cyanAccent : Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      const Text("kWh", style: TextStyle(color: Colors.white38, fontSize: 9)),
-    ],
-  );
 }
 } // CHIUDE LA CLASSE _DashboardState
 
