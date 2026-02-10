@@ -1,3 +1,4 @@
+import 'settings_page.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -218,12 +219,17 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   
   double batteryCap = 44.0; 
   double wallboxPwr = 3.7; 
+  String energyProvider = "Generico"; // Nome del fornitore
   double costPerKwh = 0.25;
   double socStart = 20.0;
   double socTarget = 80.0;
   double currentSoc = 20.0;
   double energySession = 0.0;
   TimeOfDay targetTimeInput = const TimeOfDay(hour: 7, minute: 0);
+  String providerName = "Generico";
+  bool isMultirate = false; // Se l'utente vuole la mono-oraria
+  double monoPrice = 0.20;  // Prezzo base
+  List<Map<String, dynamic>> rates = []; // Qui finiranno le fasce create
   
   DateTime? lockedStartDate; // Aggiungi questa qui
   DateTime now = DateTime.now();
@@ -317,39 +323,64 @@ void initState() {
         'batteryCap': batteryCap,
         'wallboxPwr': wallboxPwr,
         'costPerKwh': costPerKwh,
+        'provider': energyProvider,
+        'isMultirate': isMultirate,
+        'monoPrice': monoPrice,
+        'rates': rates,
         'lastUpdate': DateTime.now().toIso8601String(),
       }, SetOptions(merge: true));
     } catch (e) { debugPrint("Firebase Sync Error: $e"); }
   }
 
   void _syncUser(String newId) async {
-    if (newId.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(newId).get();
-      if (doc.exists) {
-        var data = doc.data()!;
-        setState(() {
-          userId = newId;
-          if (data['history'] != null) {
-            history = List<Map<String, dynamic>>.from(data['history']);
-            history.sort((a, b) => DateTime.parse(b['date']).compareTo(DateTime.parse(a['date'])));
-          }
-          if (data['batteryCap'] != null) batteryCap = (data['batteryCap'] as num).toDouble();
-          if (data['wallboxPwr'] != null) wallboxPwr = (data['wallboxPwr'] as num).toDouble();
-          if (data['vehicle'] != null) selectedVehicle = data['vehicle'];
-        });
-        await prefs.setString('uid', newId);
-        await prefs.setString('logs', jsonEncode(history));
-        _showSnack("Backup recuperato: ${history.length} cariche");
-      } else {
-        setState(() => userId = newId);
-        await prefs.setString('uid', newId);
-        await _forceFirebaseSync();
-        _showSnack("Nuovo profilo creato su Cloud");
-      }
-    } catch (e) { _showSnack("Errore Sync", isError: true); }
+  if (newId.isEmpty) return;
+  final prefs = await SharedPreferences.getInstance();
+  
+  try {
+    final doc = await FirebaseFirestore.instance.collection('users').doc(newId).get();
+    
+    if (doc.exists) {
+      var data = doc.data()!;
+      setState(() {
+        userId = newId;
+        
+        // 1. Allineamento nomi variabili (provider vs energyProvider)
+        energyProvider = data['energyProvider'] ?? data['provider'] ?? 'Generico';
+        isMultirate = data['isMultirate'] ?? false;
+        monoPrice = (data['monoPrice'] ?? 0.20).toDouble();
+        wallboxPwr = (data['wallboxPwr'] ?? 3.7).toDouble();
+        batteryCap = (data['batteryCap'] ?? 44.0).toDouble();
+
+        // 2. Recupero FASCE (Rates)
+        if (data['rates'] != null) {
+          var rawRates = data['rates'] as List;
+          rates = rawRates.map((e) => Map<String, dynamic>.from(e)).toList();
+        }
+
+        // 3. AGGIORNA I CONTROLLER FISICI (Altrimenti a video non vedi il cambio)
+        _uidCtrl.text = newId;
+        _costCtrl.text = monoPrice.toString();
+        _pwrCtrl.text = wallboxPwr.toString();
+        _capCtrl.text = batteryCap.toString();
+      });
+
+      // 4. Salva in locale per il prossimo riavvio
+      await prefs.setString('uid', newId);
+      await prefs.setString('rates', jsonEncode(rates));
+      await prefs.setBool('isMultirate', isMultirate);
+
+      // 5. Forza il ricalcolo della simulazione
+      _updateParams(); 
+
+      _showSnack("Dati recuperati per: $energyProvider");
+    } else {
+      _showSnack("ID Utente non trovato", isError: true);
+    }
+  } catch (e) {
+    print("Errore Sync: $e");
+    _showSnack("Errore durante la sincronizzazione", isError: true);
   }
+}
 
   void _updateClock() {
     setState(() { now = DateTime.now(); });
@@ -619,18 +650,85 @@ void initState() {
     );
   }
 
-  void _addLogEntry(DateTime date, double kwh) async {
-    final prefs = await SharedPreferences.getInstance();
-    final log = {'date': date.toIso8601String(), 'kwh': kwh, 'cost': kwh * costPerKwh};
-    setState(() { 
-      history.insert(0, log);
-      history.sort((a, b) => DateTime.parse(b['date']).compareTo(DateTime.parse(a['date'])));
-    });
-    prefs.setString('logs', jsonEncode(history));
-    _forceFirebaseSync();
-    _showSnack("Salvato su Cloud!");
+  // Aggiungiamo 'double? cost' come parametro opzionale
+void _addLogEntry(DateTime date, double kwh) async {
+  final prefs = await SharedPreferences.getInstance();
+  double finalCost = 0.0;
+  
+  // 1. Creiamo una mappa per contare i kWh in ogni fascia
+  Map<String, double> ripartizioneKwh = {};
+
+  if (isMultirate && rates.isNotEmpty) {
+    double kwhPerMinuto = wallboxPwr / 60.0;
+    double kwhRimanenti = kwh;
+    DateTime tempoCorrente = date;
+
+    while (kwhRimanenti > 0) {
+      int minutiOggi = tempoCorrente.hour * 60 + tempoCorrente.minute;
+      
+      // Recuperiamo label e prezzo della fascia attuale
+      String labelAttuale = _getNomeFascia(minutiOggi);
+      double prezzoMinuto = _getPrezzoFascia(minutiOggi);
+      
+      double quotaMinuto = (kwhRimanenti < kwhPerMinuto) ? kwhRimanenti : kwhPerMinuto;
+      
+      finalCost += quotaMinuto * prezzoMinuto;
+      
+      // 2. AGGIUNGIAMO I KWH ALLA FASCIA CORRISPONDENTE
+      ripartizioneKwh[labelAttuale] = (ripartizioneKwh[labelAttuale] ?? 0) + quotaMinuto;
+      
+      kwhRimanenti -= quotaMinuto;
+      tempoCorrente = tempoCorrente.add(const Duration(minutes: 1));
+      
+      if (wallboxPwr <= 0) {
+         finalCost = kwh * monoPrice;
+         break;
+      }
+    }
+  } else {
+    finalCost = kwh * monoPrice;
+    ripartizioneKwh["Monoraria"] = kwh;
   }
 
+  // 3. SALVIAMO IL LOG CON IL DETTAGLIO KWH
+  final log = {
+    'date': date.toIso8601String(),
+    'kwh': kwh,
+    'cost': double.parse(finalCost.toStringAsFixed(2)),
+    'provider': energyProvider,
+    'isMultirate': isMultirate,
+    // Qui salviamo la mappa dei kWh formattata a 2 decimali
+    'dettaglio': ripartizioneKwh.map((key, value) => MapEntry(key, value.toStringAsFixed(2))),
+  };
+
+  setState(() {
+    history.insert(0, log);
+    history.sort((a, b) => DateTime.parse(b['date']).compareTo(DateTime.parse(a['date'])));
+  });
+
+  await prefs.setString('logs', jsonEncode(history));
+  _forceFirebaseSync();
+}
+
+  double _getPrezzoFascia(int minuti) {
+  for (var rate in rates) {
+    // Convertiamo gli orari stringa "HH:mm" in minuti totali
+    List<String> sP = rate['start'].split(':');
+    List<String> eP = rate['end'].split(':');
+    int start = int.parse(sP[0]) * 60 + int.parse(sP[1]);
+    int end = int.parse(eP[0]) * 60 + int.parse(eP[1]);
+
+    if (start < end) {
+      // Fascia standard (es. 08:00 - 20:00)
+      if (minuti >= start && minuti < end) return double.tryParse(rate['price'].toString()) ?? monoPrice;
+    } else {
+      // Fascia che scavalca la mezzanotte (es. 22:00 - 06:00)
+      if (minuti >= start || minuti < end) return double.tryParse(rate['price'].toString()) ?? monoPrice;
+    }
+  }
+  return monoPrice; // Default se non trova corrispondenze
+}
+  
   Future<bool> _showDeleteConfirmation(int index) async {
   bool confirm = false;
   
@@ -839,68 +937,37 @@ void initState() {
     ]),
   ]);
 
-  void _showSettings() {
-    showDialog(context: context, builder: (c) => AlertDialog(
-      backgroundColor: const Color(0xFF0A141D),
-      title: Text(t('settings')),
-      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        // Dentro la Column del Dialog delle impostazioni
-SwitchListTile(
-  title: Text(t('priority'), style: TextStyle(fontSize: 14)),
-  subtitle: Text(t('priorita_sottotitolo'), style: TextStyle(fontSize: 11)),
-  value: priorityBattery,
-  activeColor: Colors.cyanAccent,
-  onChanged: (bool value) async {
-    setState(() { priorityBattery = value; });
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setBool('priorityBattery', value);
-  },
-),
-        // Dentro la Column del Dialog impostazioni
-ListTile(
-  leading: const Icon(Icons.language, color: Colors.cyanAccent),
-  title: const Text("Lingua / Language"),
-  trailing: DropdownButton<String>(
-    value: currentLang,
-    items: const [
-      DropdownMenuItem(value: 'it', child: Text("🇮🇹 IT")),
-      DropdownMenuItem(value: 'en', child: Text("🇺🇸 EN")),
-      DropdownMenuItem(value: 'fr', child: Text("🇫🇷 FR")),
-      DropdownMenuItem(value: 'de', child: Text("🇩🇪 DE")),
-    ],
-    onChanged: (String? nuovoValore) async {
-  if (nuovoValore != null) {
-    // 1. Aggiorna l'interfaccia subito
-    setState(() {
-      currentLang = nuovoValore;
-    });
+ void _showSettings() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SettingsPage(
+          userId: userId,
+          initialRates: rates,
+          initialIsMultirate: isMultirate,
+          initialMonoPrice: monoPrice,
+          initialProvider: energyProvider, // 1. PASSA IL NOME ALLA PAGINA
+        ),
+      ),
+    );
 
-    // 2. SALVA la scelta permanentemente
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('lingua_scelta', nuovoValore);
-
-    // Chiudi e riapri il menu per aggiornare i testi
-    Navigator.pop(context);
-    _showSettings();
+    if (result != null) {
+      setState(() {
+        rates = List<Map<String, dynamic>>.from(result['rates']);
+        isMultirate = result['isMultirate'];
+        monoPrice = result['monoPrice'];
+        userId = result['userId'];
+        // 2. RECUPERA IL NOME DALLA PAGINA
+        energyProvider = result['provider'] ?? 'Generico'; 
+      });
+      
+      // 3. SALVA IN LOCALE (altrimenti al riavvio torna Generico)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('energyProvider', energyProvider);
+      
+      _updateParams();
+    }
   }
-},
-  ),
-),
-        _settingField(t('costo_kwh'), _costCtrl),
-        _settingField(t('potenza_kw'), _pwrCtrl),
-        _settingField(t('capacita_kwh'), _capCtrl),
-        const SizedBox(height: 10),
-        Row(children: [
-          Expanded(child: TextField(controller: _uidCtrl, decoration: const InputDecoration(labelText: "USER ID"), style: const TextStyle(fontSize: 10, fontFamily: 'monospace'))),
-          IconButton(icon: const Icon(Icons.copy, size: 18, color: Colors.cyanAccent), onPressed: () { Clipboard.setData(ClipboardData(text: _uidCtrl.text)); _showSnack("ID copiato!"); }),
-        ]),
-        const SizedBox(height: 20),
-        SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () { _updateParams(cost: double.tryParse(_costCtrl.text.replaceAll(',', '.')), pwr: double.tryParse(_pwrCtrl.text.replaceAll(',', '.')), cap: double.tryParse(_capCtrl.text.replaceAll(',', '.'))); _syncUser(_uidCtrl.text); Navigator.pop(c); }, child: Text(t('save')))),
-      ])),
-    ));
-  }
-
-  Widget _settingField(String l, TextEditingController c) => TextField(controller: c, decoration: InputDecoration(labelText: l), keyboardType: TextInputType.number);
 
   void _showVehicleSelector() {
     String? selectedBrand;
@@ -1048,14 +1115,14 @@ void _showHistory() {
                           ],
                         ),
                         IconButton(
-                          icon: const Icon(Icons.add_circle_outline, color: Colors.cyanAccent),
-                          onPressed: () {
-                            _showManualEntry(() {
-                              setState(() {}); 
-                              setModalState(() {}); 
-                            });
-                          },
-                        ),
+  icon: const Icon(Icons.add_circle_outline, color: Colors.cyanAccent, size: 30),
+  onPressed: () {
+    // Chiude momentaneamente la cronologia per non sovrapporre i popup
+    Navigator.pop(context); 
+    // Apre la finestra di inserimento dettagliata
+    _showManualEntryDialog();
+  },
+),
                       ],
                     ),
                   ),
@@ -1109,15 +1176,31 @@ void _showHistory() {
                           ),
                           borderData: FlBorderData(show: false),
                           lineBarsData: [
-                            LineChartBarData(
-                              spots: spots,
-                              isCurved: false,
-                              color: Colors.cyanAccent,
-                              barWidth: 3,
-                              dotData: const FlDotData(show: true),
-                              belowBarData: BarAreaData(show: true, color: Colors.cyanAccent.withOpacity(0.1)),
-                            ),
-                          ],
+  LineChartBarData(
+    spots: spots, 
+    isCurved: false, 
+    color: Colors.cyanAccent, 
+    barWidth: 3, 
+    isStrokeCapRound: true,
+    
+    
+    dotData: FlDotData(
+      show: true,
+      getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+        radius: 3,
+        color: Colors.cyanAccent,
+        strokeWidth: 1,
+        strokeColor: const Color(0xFF010A0F),
+      ),
+    ),
+
+    
+    belowBarData: BarAreaData(
+      show: true,
+      color: Colors.cyanAccent.withOpacity(0.1),
+    ),
+  ),
+],
                         ),
                       ),
                     ),
@@ -1145,25 +1228,219 @@ void _showHistory() {
                                   setState(() => history.removeAt(revIdx));
                                   setModalState(() {});
                                   final prefs = await SharedPreferences.getInstance();
-                                  await prefs.setString('history', jsonEncode(history));
+                                  await prefs.setString('logs', jsonEncode(history));
                                 },
                                 child: ListTile(
                                   leading: const Icon(Icons.bolt, color: Colors.cyanAccent),
-                                  title: Text("${log['kwh']} kWh - ${log['cost']}€", style: const TextStyle(color: Colors.white)),
-                                  subtitle: Text(log['date'] ?? '', style: const TextStyle(color: Colors.white38)),
+                                  // TITOLO: Mostra Gestore e Costo totale
+                                  title: Text(
+                                    "${log['provider'] ?? 'Gestore'} - ${log['cost']}€", 
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+                                  ),
+                                  // SOTTOTITOLO: Data + Dettaglio Fasce dinamico
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(log['date']?.toString().substring(0, 16).replaceAll('T', ' ') ?? '', 
+                                           style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                                      if (log['dettaglio'] != null) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          (log['dettaglio'] as Map).entries
+                                              .map((e) => "${e.key}: ${e.value}kWh")
+                                              .join(" | "),
+                                          style: const TextStyle(color: Colors.cyanAccent, fontSize: 10, fontFamily: 'monospace'),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  // TRAILING: kWh totali sulla destra
+                                  trailing: Text(
+                                    "${log['kwh']} kWh", 
+                                    style: const TextStyle(color: Colors.white70, fontSize: 13)
+                                  ),
                                 ),
                               );
                             },
                           ),
                   ),
+                ], // Chiusura Column principale
+              ),
+            ); // Chiusura Container/Padding
+          }, // Chiusura StatefulBuilder inner
+        ); // Chiusura StatefulBuilder outer
+      }, // Chiusura builder del BottomSheet
+    );
+  } // Chiusura finale della funzione _showHistory
+void _showManualEntryDialog() async {
+  DateTime manualDate = DateTime.now();
+  TimeOfDay startTime = const TimeOfDay(hour: 22, minute: 0);
+  TimeOfDay endTime = const TimeOfDay(hour: 06, minute: 0);
+  final TextEditingController kwhCtrl = TextEditingController();
+
+  showDialog(
+    context: context,
+    builder: (c) => StatefulBuilder(
+      builder: (context, setModal) => AlertDialog(
+        backgroundColor: const Color(0xFF0A141D),
+        title: const Text("CARICA MANUALE", style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 1. SELEZIONE GIORNO
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.calendar_today, color: Colors.cyanAccent),
+                title: Text("${manualDate.day}/${manualDate.month}/${manualDate.year}"),
+                onTap: () async {
+                  DateTime? d = await showDatePicker(
+                    context: context,
+                    initialDate: manualDate,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (d != null) setModal(() => manualDate = d);
+                },
+              ),
+              // 2. SELEZIONE ORA INIZIO E FINE
+              Row(
+                children: [
+                  Expanded(
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text("Inizio", style: TextStyle(fontSize: 12, color: Colors.white54)),
+                      subtitle: Text(startTime.format(context)),
+                      onTap: () async {
+                        TimeOfDay? t = await showTimePicker(context: context, initialTime: startTime);
+                        if (t != null) setModal(() => startTime = t);
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text("Fine", style: TextStyle(fontSize: 12, color: Colors.white54)),
+                      subtitle: Text(endTime.format(context)),
+                      onTap: () async {
+                        TimeOfDay? t = await showTimePicker(context: context, initialTime: endTime);
+                        if (t != null) setModal(() => endTime = t);
+                      },
+                    ),
+                  ),
                 ],
               ),
-            );
-          },
+              // 3. KWH CARICATI
+              TextField(
+                controller: kwhCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: "kWh caricati",
+                  suffixText: "kWh",
+                  labelStyle: TextStyle(color: Colors.cyanAccent),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // ... (parte finale dell'AlertDialog)
+actions: [
+  TextButton(onPressed: () => Navigator.pop(c), child: const Text("ANNULLA")),
+  ElevatedButton(
+    style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent),
+    onPressed: () {
+      // 1. Pulizia e parsing dei kWh
+      double? k = double.tryParse(kwhCtrl.text.replaceAll(',', '.'));
+      
+      if (k != null && k > 0) {
+        // 2. Costruiamo il DateTime di inizio
+        DateTime dtInizio = DateTime(
+          manualDate.year, 
+          manualDate.month, 
+          manualDate.day, 
+          startTime.hour, 
+          startTime.minute
         );
-      },
-    );
+
+        // 3. Chiamiamo la funzione principale.
+        // NON serve calcolare il costo qui, lo farà _addLogEntry 
+        // usando la logica minuto per minuto e la potenza Wallbox.
+        _addLogEntry(dtInizio, k);
+
+        // 4. Chiudiamo il dialog
+        Navigator.pop(c);
+        
+        // Opzionale: un feedback visivo
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Ricarica salvata correttamente"))
+        );
+      } else {
+        // Se il valore kWh non è valido
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Inserisci un valore kWh valido"))
+        );
+      }
+    },
+    child: const Text("SALVA", style: TextStyle(color: Colors.black)),
+  ),
+],
+      ),
+    ),
+  );
+}
+// FUNZIONE 1: Ripartisce i kWh sulle fasce usando la potenza della Wallbox
+Map<String, double> _ripartisciConsumi(DateTime inizio, double kwhRichiesti) {
+  double kwhRimanenti = kwhRichiesti;
+  DateTime simulazione = inizio;
+  Map<String, double> ripartizione = {}; 
+
+  // Usiamo la variabile wallboxPwr che hai già in Dashboard
+  double kwhPerMinuto = wallboxPwr / 60.0;
+
+  while (kwhRimanenti > 0) {
+    int minutiDalGiorno = simulazione.hour * 60 + simulazione.minute;
+    String fasciaAttuale = _getNomeFascia(minutiDalGiorno);
+
+    double energiaEstratta = (kwhRimanenti < kwhPerMinuto) ? kwhRimanenti : kwhPerMinuto;
+    ripartizione[fasciaAttuale] = (ripartizione[fasciaAttuale] ?? 0) + energiaEstratta;
+
+    kwhRimanenti -= energiaEstratta;
+    simulazione = simulazione.add(const Duration(minutes: 1));
+    
+    if (wallboxPwr <= 0) break; // Sicurezza
   }
+  return ripartizione;
+}
+
+// FUNZIONE 2: Identifica il nome della fascia in base ai minuti (0-1440)
+String _getNomeFascia(int minuti) {
+  for (var rate in rates) {
+    try {
+      List<String> sP = rate['start'].split(':');
+      List<String> eP = rate['end'].split(':');
+      
+      // Trasformiamo tutto in minuti totali
+      int start = int.parse(sP[0]) * 60 + int.parse(sP[1]);
+      int end = int.parse(eP[0]) * 60 + int.parse(eP[1]);
+
+      if (start < end) {
+        // Fascia normale (es. 07:00 - 19:00)
+        // Usiamo >= e < per non lasciare fuori nemmeno un secondo
+        if (minuti >= start && minuti < end) return rate['label'].toString();
+      } else {
+        // Fascia che scavalca la mezzanotte (es. 19:00 - 07:00)
+        if (minuti >= start || minuti < end) return rate['label'].toString();
+      }
+    } catch (e) {
+      continue;
+    }
+  }
+  
+  // SE IL SISTEMA NON TROVA MATCH (il tuo caso "Default"), 
+  // forziamo l'assegnazione alla prima fascia disponibile invece di scrivere "Default"
+  return rates.isNotEmpty ? rates[0]['label'].toString() : "F1";
+}
 } // CHIUDE LA CLASSE _DashboardState
 
 class TechFlowPainter extends CustomPainter {
