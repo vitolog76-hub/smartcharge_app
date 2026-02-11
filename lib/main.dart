@@ -704,7 +704,7 @@ void _addLogEntry(DateTime date, double kwh) async {
   // 3. SALVIAMO IL LOG CON IL DETTAGLIO KWH
   final log = {
     'date': date.toIso8601String(),
-    'kwh': kwh,
+    'kwh': double.parse(kwh.toStringAsFixed(2)),
     'cost': double.parse(finalCost.toStringAsFixed(2)),
     'provider': energyProvider,
     'isMultirate': isMultirate,

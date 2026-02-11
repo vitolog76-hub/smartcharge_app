@@ -231,7 +231,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           const SizedBox(width: 20),
                           Expanded(
                             child: TextField(
-                              keyboardType: TextInputType.number,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               style: const TextStyle(color: Colors.white),
                               decoration: const InputDecoration(hintText: "Costo €/kWh", border: InputBorder.none),
                               onChanged: (v) => localRates[i]['price'] = double.tryParse(v.replaceAll(',', '.')) ?? 0.0,
