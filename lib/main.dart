@@ -570,6 +570,104 @@ void initState() {
   prefs.setBool('isActive', isActive);
 }
 
+  void _showPublicChargeDialog() {
+  final TextEditingController providerCtrl = TextEditingController(text: "Enel X"); // Valore di default
+  final TextEditingController kwhCtrl = TextEditingController();
+  final TextEditingController costCtrl = TextEditingController();
+
+  showDialog(
+    context: context,
+    barrierDismissible: false, // L'utente deve scegliere se salvare o annullare
+    builder: (context) => AlertDialog(
+      title: const Text("NUOVA CARICA PUBBLICA", style: TextStyle(fontWeight: FontWeight.bold)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: providerCtrl,
+              decoration: const InputDecoration(
+                labelText: "Fornitore",
+                hintText: "es. Tesla, BeCharge, Ionity",
+                prefixIcon: Icon(Icons.business),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: kwhCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: "kWh caricati",
+                prefixIcon: Icon(Icons.bolt),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: costCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: "Costo Totale (€)",
+                prefixIcon: Icon(Icons.euro),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("ANNULLA", style: TextStyle(color: Colors.grey)),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, foregroundColor: Colors.white),
+          onPressed: () {
+            // Conversione dei dati inseriti
+            final double kwh = double.tryParse(kwhCtrl.text.replaceAll(',', '.')) ?? 0.0;
+            final double cost = double.tryParse(costCtrl.text.replaceAll(',', '.')) ?? 0.0;
+            final String provider = providerCtrl.text.trim().isEmpty ? "Generico" : providerCtrl.text.trim();
+
+            if (kwh > 0) {
+              _savePublicLog(kwh, cost, provider);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Ricarica $provider salvata!")),
+              );
+            }
+          },
+          child: const Text("SALVA"),
+        ),
+      ],
+    ),
+  );
+}
+
+// Funzione di supporto per salvare il log pubblico
+void _savePublicLog(double kwh, double cost, String provider) async {
+  final now = DateTime.now();
+  
+  // Creiamo l'entry per il log includendo il modello auto selezionato
+  final Map<String, dynamic> newLog = {
+    'date': now.toIso8601String(),
+    'kwh': kwh,
+    'cost': cost,
+    'provider': provider.isEmpty ? 'Generico' : provider, 
+    'type': 'public',     
+    'car': selectedVehicle, // <--- Salviamo il modello dell'auto!
+    'dettaglio': {'Esterna': kwh.toStringAsFixed(2)}, 
+  };
+
+  setState(() {
+    history.insert(0, newLog);
+  });
+
+  // Aggiorna SharedPreferences
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('logs', jsonEncode(history));
+  
+  // Se hai una funzione di sync con Firebase/Vercel, chiamala qui
+  // _forceFirebaseSync(); 
+}
+
   void _save(bool tot) async {
     // 1. Calcoliamo i dati della ricarica prima di resettare
     double kwh = tot ? (((socTarget - socStart) / 100) * batteryCap) : energySession;
@@ -801,28 +899,46 @@ void _addLogEntry(DateTime date, double kwh) async {
   Widget _glassCircle(double s, Color c) => Container(width: s, height: s, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [c, c.withOpacity(0.1), Colors.transparent], stops: const [0.0, 0.45, 1.0])));
 
   @override
-  Widget build(BuildContext context) {
-    Color statusCol = isCharging ? Colors.greenAccent : (isWaiting ? Colors.orangeAccent : Colors.cyanAccent);
-    return Scaffold(
-      body: Stack(children: [
+Widget build(BuildContext context) {
+  Color statusCol = isCharging ? Colors.greenAccent : (isWaiting ? Colors.orangeAccent : Colors.cyanAccent);
+  
+  return Scaffold(
+    body: Stack(
+      children: [
         _liquidBackground(),
-        SafeArea(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
-          _header(),
-          _compactMainRow(),
-          _statusBadge(statusCol, isCharging ? t('status_charging') : (isWaiting ? t('status_wait') : t('status_off'))),
-          const SizedBox(height: 25),
-          _premiumBatterySection(currentSoc), 
-          _energyEstimates(),
-          _paramSliders(), 
-          const Spacer(),
-          _controls(),
-          const SizedBox(height: 15),
-          _actionButtons(),
-          const SizedBox(height: 10),
-        ]))),
-      ]),
-    );
-  }
+        SafeArea(
+          // AVVOLGI TUTTO IL PADDING IN UNO SCROLL
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  _header(),
+                  _compactMainRow(),
+                  _statusBadge(statusCol, isCharging ? t('status_charging') : (isWaiting ? t('status_wait') : t('status_off'))),
+                  const SizedBox(height: 25),
+                  _premiumBatterySection(currentSoc), 
+                  _energyEstimates(),
+                  _paramSliders(), 
+                  
+                  // SOSTITUISCI IL 'Spacer()' CON UN SIZEDBOX FISSO
+                  // Questo evita che la colonna provi a "esplodere" verso il basso
+                  const SizedBox(height: 20), 
+                  
+                  _controls(),
+                  const SizedBox(height: 15),
+                  _actionButtons(),
+                  const SizedBox(height: 20), // Un po' di respiro alla fine
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _header() => Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
     IconButton(icon: const Icon(Icons.settings_outlined, color: Colors.white30), onPressed: _showSettings),
@@ -878,32 +994,56 @@ void _addLogEntry(DateTime date, double kwh) async {
   Widget _infoLabel(String l, String v, Color c) => Column(children: [Text(l, style: const TextStyle(fontSize: 9, color: Colors.white38)), Text(v, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: c))]);
   Widget _statusBadge(Color col, String text) => Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(color: col.withOpacity(0.1), borderRadius: BorderRadius.circular(20), border: Border.all(color: col.withOpacity(0.2))), child: Text(text, style: TextStyle(color: col, fontSize: 10, fontWeight: FontWeight.bold)));
 
-  Widget _paramSliders() => Column(children: [
-    _sliderRow(t('potenza_wallbox'), "${wallboxPwr.toStringAsFixed(1)} kW", wallboxPwr, 1.5, 11.0, 0.1, Colors.orangeAccent, (v) => _updateParams(pwr: v)),
-    const SizedBox(height: 10),
-    _sliderRowWithAction(t('capacita_batteria'), "${batteryCap.toStringAsFixed(1)} kWh", batteryCap, 10, 150, 0.1, Colors.cyanAccent, (v) => _updateParams(cap: v), _showVehicleSelector),
-    Padding(
-      padding: const EdgeInsets.only(top: 15),
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(border: Border.symmetric(horizontal: BorderSide(color: Colors.amberAccent.withOpacity(0.1), width: 0.5))),
-          child: Text(
-            selectedVehicle.toUpperCase(),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 4, fontFamily: 'monospace', color: Colors.amberAccent,
-              shadows: [
-                Shadow(color: Colors.orangeAccent.withOpacity(0.8), blurRadius: 10),
-                Shadow(color: Colors.orangeAccent.withOpacity(0.5), blurRadius: 20),
-                Shadow(color: Colors.amberAccent.withOpacity(0.3), blurRadius: 30),
+  Widget _paramSliders() => Column(
+    mainAxisSize: MainAxisSize.min, // Occupa solo lo spazio necessario
+    children: [
+      _sliderRow(t('potenza_wallbox'), "${wallboxPwr.toStringAsFixed(1)} kW", wallboxPwr, 1.5, 11.0, 0.1, Colors.orangeAccent, (v) => _updateParams(pwr: v)),
+      const SizedBox(height: 5), // Ridotto da 10 a 5
+      _sliderRow(t('capacita_batteria'), "${batteryCap.toStringAsFixed(1)} kWh", batteryCap, 10, 150, 0.1, Colors.cyanAccent, (v) => _updateParams(cap: v)),
+      
+      const SizedBox(height: 12), // Ridotto da 20 a 12
+
+      GestureDetector(
+        onTap: _showVehicleSelector,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6), // Padding più sottile
+            decoration: BoxDecoration(
+              color: Colors.amberAccent.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.amberAccent.withOpacity(0.15), width: 1),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.search_rounded, color: Colors.amberAccent, size: 16), // Icona più piccola
+                    const SizedBox(width: 6),
+                    Text(
+                      "CAMBIA AUTO",
+                      style: TextStyle(color: Colors.amberAccent.withOpacity(0.6), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                    ),
+                  ],
+                ),
+                Text(
+                  selectedVehicle.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 16, // Ridotto da 18 a 16
+                    fontWeight: FontWeight.w900, 
+                    letterSpacing: 2, 
+                    fontFamily: 'monospace', 
+                    color: Colors.amberAccent,
+                    shadows: [Shadow(color: Colors.orangeAccent.withOpacity(0.6), blurRadius: 8)],
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ),
-    ),
-  ]);
+    ],
+  );
 
   Widget _sliderRow(String lab, String val, double v, double min, double max, double step, Color c, Function(double) onC) => Column(children: [
     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -941,15 +1081,95 @@ void _addLogEntry(DateTime date, double kwh) async {
 
   Widget _touchControl(String l, String v, VoidCallback t) => InkWell(onTap: t, child: Column(children: [Text(l, style: const TextStyle(fontSize: 9, color: Colors.white38)), Text(v, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.cyanAccent))]));
 
-  Widget _actionButtons() => Column(children: [
-    SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: _toggleSystem, style: ElevatedButton.styleFrom(backgroundColor: isActive ? Colors.redAccent : Colors.cyanAccent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text(isActive ? t('btn_stop') : t('btn_attiva'), style: const TextStyle(fontWeight: FontWeight.w900)))),
-    const SizedBox(height: 10),
-    Row(children: [
-      Expanded(child: OutlinedButton(onPressed: () => _save(false), child: Text(t('save_partial')))),
-      const SizedBox(width: 10),
-      Expanded(child: ElevatedButton(onPressed: () => _save(true), style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black), child: Text(t('save_total')))),
-    ]),
-  ]);
+  Widget _actionButtons() => Column(
+    children: [
+      // 1. BLOCCO SIMULAZIONE (DA SOLO IN ALTO)
+      SizedBox(
+        width: double.infinity,
+        height: 60,
+        child: ElevatedButton.icon(
+          icon: Icon(isActive ? Icons.stop_circle : Icons.play_circle_filled, size: 28),
+          label: Text(
+            isActive ? t('btn_stop').toUpperCase() : "AVVIA SIMULAZIONE CASA",
+            style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.1),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isActive ? Colors.redAccent : Colors.cyanAccent,
+            foregroundColor: Colors.black,
+            elevation: 4,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          ),
+          onPressed: _toggleSystem,
+        ),
+      ),
+
+      const SizedBox(height: 15),
+
+      // 2. BLOCCO GESTIONE DATI (3 PULSANTI ALLINEATI)
+      Row(
+        children: [
+          // REGISTRA PUBBLICA (Blu)
+          Expanded(
+            child: _buildMiniButton(
+              icon: Icons.ev_station,
+              label: "LOG\nPUBBLICA",
+              color: Colors.blueAccent,
+              onTap: () => _showPublicChargeDialog(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // SALVA PARZIALE (Bianco/Grey)
+          Expanded(
+            child: _buildMiniButton(
+              icon: Icons.save_outlined,
+              label: "SALVA\nPARZIALE",
+              color: Colors.white70,
+              onTap: () => _save(false),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // SALVA TOTALE (Verde)
+          Expanded(
+            child: _buildMiniButton(
+              icon: Icons.check_circle,
+              label: "SALVA\nTOTALE",
+              color: Colors.greenAccent,
+              onTap: () => _save(true),
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+
+// Helper per i bottoni piccoli della riga inferiore
+Widget _buildMiniButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+  return SizedBox(
+    height: 70,
+    child: OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: color.withOpacity(0.5), width: 1.5),
+        padding: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: color.withOpacity(0.05),
+      ),
+      onPressed: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 22),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, height: 1.1),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
   void _showSettings() async {
   final result = await Navigator.push(
@@ -1333,32 +1553,60 @@ final kwhDueFa = sommaKwhMese(2);
                                 style: TextStyle(color: Colors.white38, fontSize: 12)))
                             else
                               ...ricaricheAnnoSelezionato.map((log) {
-                                final date = DateTime.parse(log['date']);
-                                return Dismissible(
-                                  key: Key(log['date'] + "archivio"),
-                                  direction: DismissDirection.endToStart,
-                                  background: Container(
-                                    alignment: Alignment.centerRight, 
-                                    padding: const EdgeInsets.only(right: 20), 
-                                    color: Colors.redAccent, 
-                                    child: const Icon(Icons.delete, color: Colors.white)
-                                  ),
-                                  onDismissed: (dir) async {
-                                    setState(() => history.removeWhere((e) => e['date'] == log['date']));
-                                    setModalState(() {});
-                                    final prefs = await SharedPreferences.getInstance();
-                                    await prefs.setString('logs', jsonEncode(history));
-                                  },
-                                  child: ListTile(
-                                    leading: const Icon(Icons.history, color: Colors.white38),
-                                    title: Text("${log['provider']} - ${log['cost']}€", 
-                                      style: const TextStyle(color: Colors.white)),
-                                    subtitle: Text(DateFormat('dd/MM HH:mm').format(date), 
-                                      style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                                    trailing: Text("${log['kwh']} kWh", style: const TextStyle(color: Colors.white70)),
-                                  ),
-                                );
-                              }).toList(),
+  final date = DateTime.parse(log['date']);
+  return Dismissible(
+    key: Key(log['date'] + "archivio"),
+    direction: DismissDirection.endToStart,
+    background: Container(
+      alignment: Alignment.centerRight, 
+      padding: const EdgeInsets.only(right: 20), 
+      color: Colors.redAccent, 
+      child: const Icon(Icons.delete, color: Colors.white)
+    ),
+    onDismissed: (dir) async {
+      setState(() => history.removeWhere((e) => e['date'] == log['date']));
+      setModalState(() {});
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('logs', jsonEncode(history));
+    },
+    child: ListTile(
+      leading: Icon(
+        log['type'] == 'public' ? Icons.ev_station : Icons.home, 
+        color: log['type'] == 'public' ? Colors.blueAccent : Colors.cyanAccent,
+        size: 20,
+      ),
+      title: Text(
+        "${log['type'] == 'public' ? (log['provider'] ?? 'Colonnina') : 'Casa'} - ${log['cost']}€", 
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            DateFormat('dd/MM HH:mm').format(date), 
+            style: const TextStyle(color: Colors.white38, fontSize: 11)
+          ),
+          // --- RIGA AUTO ---
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              "🚗 ${log['car'] ?? 'Modello non salvato'}", 
+              style: TextStyle(
+                color: log['car'] != null ? Colors.amberAccent : Colors.white24, 
+                fontSize: 10, 
+                fontWeight: FontWeight.bold
+              ),
+            ),
+          ),
+        ],
+      ),
+      trailing: Text(
+        "${log['kwh']} kWh", 
+        style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)
+      ),
+    ),
+  );
+}).toList(),
                           ],
                         );
                       },
