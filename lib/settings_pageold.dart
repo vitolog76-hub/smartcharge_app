@@ -27,10 +27,6 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   late TextEditingController _uidController;
   late TextEditingController _providerController;
-  // DICHIARA I NUOVI CONTROLLER QUI
-  late TextEditingController _userNameController;
-  late TextEditingController _carPlateController;
-
   late List<Map<String, dynamic>> localRates;
   late bool localIsMultirate;
   late double localMonoPrice;
@@ -40,42 +36,20 @@ class _SettingsPageState extends State<SettingsPage> {
     super.initState();
     _uidController = TextEditingController(text: widget.userId);
     _providerController = TextEditingController(text: widget.initialProvider);
-    
-    // INIZIALIZZA I CONTROLLER
-    _userNameController = TextEditingController();
-    _carPlateController = TextEditingController();
-    
+    // Creiamo una copia profonda della lista per non modificare l'originale prima del salvataggio
     localRates = List<Map<String, dynamic>>.from(
       widget.initialRates.map((e) => Map<String, dynamic>.from(e))
     );
     localIsMultirate = widget.initialIsMultirate;
     localMonoPrice = widget.initialMonoPrice;
-
-    // CARICA I DATI
-    _loadUserData();
-  }
-
-  // UNA SOLA VOLTA, FUORI DA INITSTATE
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _userNameController.text = prefs.getString('user_name') ?? "";
-      _carPlateController.text = prefs.getString('car_plate') ?? "";
-    });
   }
 
   @override
   void dispose() {
     _uidController.dispose();
     _providerController.dispose();
-    _userNameController.dispose(); // AGGIUNTO
-    _carPlateController.dispose(); // AGGIUNTO
     super.dispose();
   }
-  
-  // ... resto del codice (_saveAndSync e build)
-
-  // Funzione per caricare i dati esistenti
 
   Future<void> _fetchUserFromFirebase(String uid) async {
     if (uid.isEmpty) return;
@@ -101,53 +75,39 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveAndSync() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    
-    // 1. SALVATAGGIO LOCALE (SharedPreferences)
-    // Salviamo il nome e la targa inseriti nei controller
-    await prefs.setString('user_name', _userNameController.text);
-    await prefs.setString('car_plate', _carPlateController.text);
-    await prefs.setString('energyProvider', _providerController.text);
+    try {
+      List<Map<String, dynamic>> ratesToSave = [];
+      for (int i = 0; i < localRates.length; i++) {
+        ratesToSave.add({
+          'label': 'F${i + 1}',
+          'start': localRates[i]['start'] ?? '00:00',
+          'end': localRates[i]['end'] ?? '00:00',
+          'price': double.tryParse(localRates[i]['price'].toString().replaceAll(',', '.')) ?? 0.0,
+        });
+      }
 
-    // 2. PREPARAZIONE DATI TARIFFE (Il tuo codice esistente)
-    List<Map<String, dynamic>> ratesToSave = [];
-    for (int i = 0; i < localRates.length; i++) {
-      ratesToSave.add({
-        'label': 'F${i + 1}',
-        'start': localRates[i]['start'] ?? '00:00',
-        'end': localRates[i]['end'] ?? '00:00',
-        'price': double.tryParse(localRates[i]['price'].toString().replaceAll(',', '.')) ?? 0.0,
+      // 1. SALVATAGGIO LOCALE (SharedPreferences)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('uid', _uidController.text.trim());
+      await prefs.setString('energyProvider', _providerController.text);
+      await prefs.setString('rates', jsonEncode(ratesToSave));
+      await prefs.setBool('isMultirate', localIsMultirate);
+      await prefs.setDouble('monoPrice', localMonoPrice);
+
+      // 2. RITORNO ALLA HOME
+      // Passiamo tutti i nuovi dati al main.dart, che si occuperà del sync protetto
+      if (!mounted) return;
+      Navigator.pop(context, {
+        'newUserId': _uidController.text.trim(),
+        'rates': ratesToSave,
+        'isMultirate': localIsMultirate,
+        'monoPrice': localMonoPrice,
+        'provider': _providerController.text,
       });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore salvataggio: $e")));
     }
-
-    // 3. SINCRONIZZAZIONE CLOUD (Firebase)
-    // Aggiungiamo userName e carPlate alla mappa inviata a Firestore
-    await FirebaseFirestore.instance.collection('users').doc(widget.userId).set({
-      'userName': _userNameController.text, // <--- Aggiunto
-      'carPlate': _carPlateController.text, // <--- Aggiunto
-      'energyProvider': _providerController.text,
-      'rates': ratesToSave,
-      'isMultirate': localIsMultirate,
-      'monoPrice': localMonoPrice,
-      'lastUpdate': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    if (!mounted) return;
-    
-    // Chiude la pagina e torna alla home passando "true" per dire che i dati sono cambiati
-    Navigator.pop(context, true);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Impostazioni salvate con successo!")),
-    );
-  } catch (e) {
-    debugPrint("Errore durante il salvataggio: $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Errore nel salvataggio: $e")),
-    );
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -164,31 +124,6 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Titolo che hai creato tu
-_buildSectionTitle("DATI INTESTAZIONE PDF"),
-
-// Campo Nome
-TextField(
-  controller: _userNameController,
-  style: const TextStyle(color: Colors.white),
-  decoration: const InputDecoration(
-    labelText: "Nome / Azienda",
-    prefixIcon: Icon(Icons.person, color: Colors.cyanAccent),
-  ),
-),
-
-const SizedBox(height: 15),
-
-// Campo Targa
-TextField(
-  controller: _carPlateController,
-  style: const TextStyle(color: Colors.white),
-  textCapitalization: TextCapitalization.characters,
-  decoration: const InputDecoration(
-    labelText: "Targa Veicolo",
-    prefixIcon: Icon(Icons.directions_car, color: Colors.cyanAccent),
-  ),
-),
             const Text("ID UTENTE CLOUD", style: TextStyle(color: Colors.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Row(
@@ -333,21 +268,6 @@ TextField(
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-  // Questa funzione spiega a Flutter come disegnare i titoli colorati delle sezioni
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 15),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.cyanAccent, 
-          fontSize: 12, 
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.1
         ),
       ),
     );

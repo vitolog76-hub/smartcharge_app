@@ -32,3 +32,4 @@ flutter:
   # alla radice del tuo progetto MacBook.
   assets:
     - assets/cars.json
+    - assets/logo.png

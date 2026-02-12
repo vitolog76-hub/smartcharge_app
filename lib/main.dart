@@ -482,6 +482,7 @@ void initState() {
     batteryCap = prefs.getDouble('cap') ?? 44.0;
     wallboxPwr = prefs.getDouble('pwr') ?? 3.7;
     energyProvider = prefs.getString('energyProvider') ?? 'Generico';
+    selectedVehicle = prefs.getString('vehicleName') ?? "Manuale / Altro";
     _uidCtrl.text = userId;
     
     final localLogs = prefs.getString('logs');
@@ -525,20 +526,38 @@ void initState() {
   _updateParams();
 }
 
-  void _updateParams({double? pwr, double? cap, double? cost}) async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      if (pwr != null) { wallboxPwr = pwr.clamp(1.5, 11.0); _pwrCtrl.text = wallboxPwr.toStringAsFixed(1); }
-      if (cap != null) { batteryCap = cap; _capCtrl.text = batteryCap.toStringAsFixed(1);
-      monoPrice = cost ?? 0.0;}
-      if (cost != null) { costPerKwh = cost; _costCtrl.text = cost.toStringAsFixed(2); }
-    });
-    if (pwr != null) prefs.setDouble('pwr', wallboxPwr);
-    if (cap != null) { prefs.setDouble('cap', batteryCap); prefs.setString('vehicleName', selectedVehicle); }
-    if (cost != null) prefs.setDouble('cost', costPerKwh);
-    _recalcSchedule();
-    _forceFirebaseSync();
-  }
+  void _updateParams({double? pwr, double? cap, double? cost, String? vName}) async {
+  final prefs = await SharedPreferences.getInstance();
+  setState(() {
+    if (pwr != null) { 
+      wallboxPwr = pwr.clamp(1.5, 11.0); 
+      _pwrCtrl.text = wallboxPwr.toStringAsFixed(1); 
+    }
+    if (cap != null) { 
+      batteryCap = cap; 
+      _capCtrl.text = batteryCap.toStringAsFixed(1);
+      monoPrice = cost ?? 0.0;
+    }
+    if (cost != null) { 
+      costPerKwh = cost; 
+      _costCtrl.text = cost.toStringAsFixed(2); 
+    }
+    // AGGIUNGI QUESTO: Aggiorna la variabile di stato se viene passato un nome
+    if (vName != null) {
+      selectedVehicle = vName;
+    }
+  });
+
+  if (pwr != null) await prefs.setDouble('pwr', wallboxPwr);
+  if (cap != null) await prefs.setDouble('cap', batteryCap);
+  if (cost != null) await prefs.setDouble('cost', costPerKwh);
+  
+  // AGGIUNGI QUESTO: Salva sempre il nome del veicolo corrente nelle preferenze
+  await prefs.setString('vehicleName', selectedVehicle);
+
+  _recalcSchedule();
+  _forceFirebaseSync();
+}
 
   void _toggleSystem() async {
   HapticFeedback.mediumImpact();
@@ -1112,7 +1131,7 @@ Widget build(BuildContext context) {
           Expanded(
             child: _buildMiniButton(
               icon: Icons.ev_station,
-              label: "LOG\nPUBBLICA",
+              label: "CARICA\nPUBBLICA",
               color: Colors.blueAccent,
               onTap: () => _showPublicChargeDialog(),
             ),
@@ -1122,7 +1141,7 @@ Widget build(BuildContext context) {
           Expanded(
             child: _buildMiniButton(
               icon: Icons.save_outlined,
-              label: "SALVA\nPARZIALE",
+              label: "SALVA\nCARICA PARZIALE",
               color: Colors.white70,
               onTap: () => _save(false),
             ),
@@ -1132,7 +1151,7 @@ Widget build(BuildContext context) {
           Expanded(
             child: _buildMiniButton(
               icon: Icons.check_circle,
-              label: "SALVA\nTOTALE",
+              label: "SALVA\nCARICA TOTALE",
               color: Colors.greenAccent,
               onTap: () => _save(true),
             ),
@@ -1789,16 +1808,32 @@ String _getNomeFascia(int minuti) {
   // forziamo l'assegnazione alla prima fascia disponibile invece di scrivere "Default"
   return rates.isNotEmpty ? rates[0]['label'].toString() : "F1";
 }
+
 Future<void> _generatePDF() async {
+  // 1. CARICAMENTO LOGO DAGLI ASSETS
+  // Assicurati che il file sia in assets/logo.png e registrato in pubspec.yaml
+  pw.MemoryImage? logo;
+  try {
+    final bytes = await rootBundle.load('assets/logo.png');
+    logo = pw.MemoryImage(bytes.buffer.asUint8List());
+  } catch (e) {
+    debugPrint("Logo non trovato o errore: $e");
+    // Se non trova il logo, il PDF verrà generato comunque senza immagine
+  }
+
+  // 2. RECUPERO DATI UTENTE E VEICOLO
+  final prefs = await SharedPreferences.getInstance();
+  final String userName = prefs.getString('user_name') ?? "Non specificato";
+  final String carPlate = prefs.getString('car_plate') ?? "N/A";
+  final String currentVehicle = selectedVehicle; 
+
   final pdf = pw.Document();
   final DateTime ora = DateTime.now();
   double granTotaleKwh = 0;
   double granTotaleEuro = 0;
 
-  // 1. Raggruppiamo i dati per Mese
+  // 3. Raggruppamento dati per Mese
   Map<String, List<Map<String, dynamic>>> raggruppato = {};
-  
-  // Ordiniamo history per data per avere i mesi in ordine nel PDF
   history.sort((a, b) => DateTime.parse(a['date']).compareTo(DateTime.parse(b['date'])));
 
   for (var log in history) {
@@ -1808,7 +1843,6 @@ Future<void> _generatePDF() async {
       if (!raggruppato.containsKey(mese)) raggruppato[mese] = [];
       raggruppato[mese]!.add(log);
       
-      // Calcolo per il Gran Totale Finale
       granTotaleKwh += double.tryParse(log['kwh'].toString()) ?? 0;
       granTotaleEuro += double.tryParse(log['cost'].toString()) ?? 0;
     }
@@ -1817,16 +1851,44 @@ Future<void> _generatePDF() async {
   pdf.addPage(
     pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(32),
       build: (pw.Context context) => [
-        // INTESTAZIONE
-        pw.Header(
-          level: 0, 
-          child: pw.Text("REPORT ANNUALE ENERGIA - $_selectedYear", 
-          style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold))
+        // INTESTAZIONE CON LOGO
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Row(
+              children: [
+                if (logo != null) ...[
+                  pw.Image(logo, width: 50, height: 50),
+                  pw.SizedBox(width: 15),
+                ],
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text("REPORT RICARICHE SMARTCHARGE", 
+                        style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 5),
+                    pw.Text("Utente: $userName", style: pw.TextStyle(fontSize: 11)),
+                    pw.Text("Veicolo: $currentVehicle", style: pw.TextStyle(fontSize: 11)),
+                    pw.Text("Targa: $carPlate", style: pw.TextStyle(fontSize: 11)),
+                  ],
+                ),
+              ],
+            ),
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                pw.Text("Anno: $_selectedYear", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                pw.Text("Data: ${DateFormat('dd/MM/yyyy').format(ora)}", style: pw.TextStyle(fontSize: 10)),
+              ],
+            ),
+          ],
         ),
-        pw.Text("ID Utente: $userId"),
-        pw.Text("Generato il: ${DateFormat('dd/MM/yyyy HH:mm').format(ora)}"),
-        pw.SizedBox(height: 20),
+        pw.SizedBox(height: 10),
+        pw.Divider(thickness: 1),
+        pw.SizedBox(height: 15),
 
         // TABELLE MENSILI
         ...raggruppato.entries.map((entry) {
@@ -1841,46 +1903,46 @@ Future<void> _generatePDF() async {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(vertical: 5),
-                child: pw.Text(entry.key, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                padding: const pw.EdgeInsets.symmetric(vertical: 8),
+                child: pw.Text(entry.key, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey800)),
               ),
               pw.TableHelper.fromTextArray(
-                headers: ['Data', 'Gestore', 'kWh', 'Costo (EUR)'], // Usiamo EUR per sicurezza
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headers: ['Data', 'Gestore', 'kWh', 'Costo (EUR)'],
                 data: entry.value.map((log) {
                   return [
                     DateFormat('dd/MM/yy').format(DateTime.parse(log['date'])),
                     log['provider'] ?? '-',
                     log['kwh'].toString(),
-                    "${log['cost']} " // Aggiungi uno spazio invece del simbolo se dà problemi
+                    "EUR ${double.tryParse(log['cost'].toString())?.toStringAsFixed(2)}"
                   ];
                 }).toList(),
               ),
               pw.Container(
-  alignment: pw.Alignment.centerRight,
-  padding: const pw.EdgeInsets.only(top: 5, bottom: 15),
-  child: pw.Text(
-    "Subtotale ${entry.key}: ${meseKwh.toStringAsFixed(2)} kWh | EUR ${meseEuro.toStringAsFixed(2)}",
-    style: pw.TextStyle(
-      fontSize: 9, 
-      font: pw.Font.courierOblique(),),
+                alignment: pw.Alignment.centerRight,
+                padding: const pw.EdgeInsets.only(top: 5, bottom: 15),
+                child: pw.Text(
+                  "Subtotale ${entry.key}: ${meseKwh.toStringAsFixed(2)} kWh",
+                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
                 ),
               ),
             ],
           );
         }).toList(),
 
-        pw.Divider(),
-        // GRAN TOTALE FINALE
+        pw.Divider(thickness: 1),
+        // TOTALE GENERALE
         pw.Container(
           alignment: pw.Alignment.centerRight,
           padding: const pw.EdgeInsets.only(top: 10),
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
-              pw.Text("TOTALE GENERALE ANNO $_selectedYear", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
-              pw.SizedBox(height: 5),
+              pw.Text("RIEPILOGO ANNUALE", style: pw.TextStyle(fontSize: 10)),
               pw.Text("Energia Totale: ${granTotaleKwh.toStringAsFixed(2)} kWh", style: pw.TextStyle(fontSize: 12)),
-              pw.Text("Spesa Totale: EUR ${granTotaleEuro.toStringAsFixed(2)}", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+              pw.Text("SPESA TOTALE: EUR ${granTotaleEuro.toStringAsFixed(2)}", 
+                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
             ],
           ),
         ),
@@ -1888,8 +1950,14 @@ Future<void> _generatePDF() async {
     ),
   );
 
-  await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
+  // Generazione del PDF
+  final String fileName = "Report_SmartCharge_${_selectedYear}_${carPlate.replaceAll(' ', '_')}.pdf";
+  await Printing.layoutPdf(
+    onLayout: (format) async => pdf.save(), 
+    name: fileName
+  );
 }
+
 Widget _buildStat(String label, double valore, {bool active = false}) {
   return Column(
     children: [
