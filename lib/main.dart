@@ -1369,8 +1369,22 @@ void _showHistory() {
         const SizedBox(width: 8), // Un po' di spazio tra le frecce e il PDF
         IconButton(
           icon: const Icon(Icons.picture_as_pdf, color: Colors.redAccent),
-          onPressed: () => _generatePDF(),
           tooltip: "Esporta PDF",
+          onPressed: () async {
+            // 1. Feedback visivo per l'utente
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Generazione PDF in corso..."), 
+                duration: Duration(seconds: 2)
+              ),
+            );
+
+            // 2. Delay tecnico per Safari (iPhone)
+            await Future.delayed(const Duration(milliseconds: 500));
+
+            // 3. Chiamata alla funzione
+            await _generatePDF();
+          },
         ),
       ],
     ),
@@ -1953,9 +1967,10 @@ Future<void> _generatePDF() async {
   // Generazione del PDF
   final String fileName = "Report_SmartCharge_${_selectedYear}_${carPlate.replaceAll(' ', '_')}.pdf";
   await Printing.layoutPdf(
-    onLayout: (format) async => pdf.save(), 
-    name: fileName
-  );
+  onLayout: (PdfPageFormat format) async => pdf.save(),
+  name: 'Report_${_selectedYear}.pdf', // Fondamentale per iOS
+  format: PdfPageFormat.a4,
+);
 }
 
 Widget _buildStat(String label, double valore, {bool active = false}) {
