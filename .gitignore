@@ -14,3 +14,5 @@ build/
 # Android/iOS specifici
 test/*.apk
 *.uploaded
+serviceAccountKey.json
+serviceAccountKey.json
