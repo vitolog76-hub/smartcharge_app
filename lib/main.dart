@@ -1965,14 +1965,21 @@ Future<void> _generatePDF() async {
   );
 
   // Generazione del PDF
+  final pdfBytes = await pdf.save();
   final String fileName = "Report_SmartCharge_${_selectedYear}_${carPlate.replaceAll(' ', '_')}.pdf";
-  await Printing.layoutPdf(
-  onLayout: (PdfPageFormat format) async => pdf.save(),
-  name: 'Report_${_selectedYear}.pdf', // Fondamentale per iOS
-  format: PdfPageFormat.a4,
-);
-}
 
+  try {
+    await Printing.sharePdf(
+      bytes: pdfBytes,
+      filename: fileName,
+    );
+  } catch (e) {
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdfBytes,
+      name: fileName,
+    );
+  }
+}
 Widget _buildStat(String label, double valore, {bool active = false}) {
   return Column(
     children: [

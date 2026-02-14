@@ -27,10 +27,9 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   late TextEditingController _uidController;
   late TextEditingController _providerController;
-  // DICHIARA I NUOVI CONTROLLER QUI
   late TextEditingController _userNameController;
   late TextEditingController _carPlateController;
-
+  late TextEditingController _monoPriceController;
   late List<Map<String, dynamic>> localRates;
   late bool localIsMultirate;
   late double localMonoPrice;
@@ -40,8 +39,6 @@ class _SettingsPageState extends State<SettingsPage> {
     super.initState();
     _uidController = TextEditingController(text: widget.userId);
     _providerController = TextEditingController(text: widget.initialProvider);
-    
-    // INIZIALIZZA I CONTROLLER
     _userNameController = TextEditingController();
     _carPlateController = TextEditingController();
     
@@ -49,18 +46,29 @@ class _SettingsPageState extends State<SettingsPage> {
       widget.initialRates.map((e) => Map<String, dynamic>.from(e))
     );
     localIsMultirate = widget.initialIsMultirate;
-    localMonoPrice = widget.initialMonoPrice;
-
-    // CARICA I DATI
+    _monoPriceController = TextEditingController(
+      text: widget.initialMonoPrice.toString().replaceAll('.', ',')
+    );
+   
     _loadUserData();
   }
 
-  // UNA SOLA VOLTA, FUORI DA INITSTATE
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _userNameController.text = prefs.getString('user_name') ?? "";
       _carPlateController.text = prefs.getString('car_plate') ?? "";
+      _providerController.text = prefs.getString('energyProvider') ?? widget.initialProvider;
+      localIsMultirate = prefs.getBool('isMultirate') ?? widget.initialIsMultirate;
+      
+      double savedPrice = prefs.getDouble('monoPrice') ?? widget.initialMonoPrice;
+      _monoPriceController.text = savedPrice.toString().replaceAll('.', ',');
+
+      // CARICAMENTO DELLE FASCE SALVATE LOCALMENTE
+      String? savedRatesJson = prefs.getString('rates');
+      if (savedRatesJson != null) {
+        localRates = List<Map<String, dynamic>>.from(jsonDecode(savedRatesJson));
+      }
     });
   }
 
@@ -68,14 +76,26 @@ class _SettingsPageState extends State<SettingsPage> {
   void dispose() {
     _uidController.dispose();
     _providerController.dispose();
-    _userNameController.dispose(); // AGGIUNTO
-    _carPlateController.dispose(); // AGGIUNTO
+    _userNameController.dispose();
+    _carPlateController.dispose();
+    _monoPriceController.dispose();
     super.dispose();
   }
   
-  // ... resto del codice (_saveAndSync e build)
-
-  // Funzione per caricare i dati esistenti
+  Future<void> _selectTime(int index, String field) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: int.parse(localRates[index][field].split(':')[0]),
+        minute: int.parse(localRates[index][field].split(':')[1]),
+      ),
+    );
+    if (picked != null) {
+      setState(() {
+        localRates[index][field] = "${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}";
+      });
+    }
+  }
 
   Future<void> _fetchUserFromFirebase(String uid) async {
     if (uid.isEmpty) return;
@@ -84,70 +104,66 @@ class _SettingsPageState extends State<SettingsPage> {
       if (doc.exists) {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         setState(() {
-          _providerController.text = data['provider'] ?? "Generico";
+          _providerController.text = data['energyProvider'] ?? "Generico";
+          _userNameController.text = data['userName'] ?? "";
+          _carPlateController.text = data['carPlate'] ?? "";
           localIsMultirate = data['isMultirate'] ?? false;
-          localMonoPrice = (data['monoPrice'] ?? 0.20).toDouble();
+          
+          double cloudPrice = (data['monoPrice'] ?? 0.20).toDouble();
+          _monoPriceController.text = cloudPrice.toString().replaceAll('.', ',');
+          
           if (data['rates'] != null) {
             localRates = List<Map<String, dynamic>>.from(data['rates']);
           }
         });
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Dati recuperati con successo!")));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Nessun dato trovato per questo ID")));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore: $e")));
+      debugPrint("Errore: $e");
     }
   }
 
   Future<void> _saveAndSync() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    
-    // 1. SALVATAGGIO LOCALE (SharedPreferences)
-    // Salviamo il nome e la targa inseriti nei controller
-    await prefs.setString('user_name', _userNameController.text);
-    await prefs.setString('car_plate', _carPlateController.text);
-    await prefs.setString('energyProvider', _providerController.text);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      double priceToSave = double.tryParse(_monoPriceController.text.replaceAll(',', '.')) ?? 0.0;
 
-    // 2. PREPARAZIONE DATI TARIFFE (Il tuo codice esistente)
-    List<Map<String, dynamic>> ratesToSave = [];
-    for (int i = 0; i < localRates.length; i++) {
-      ratesToSave.add({
-        'label': 'F${i + 1}',
-        'start': localRates[i]['start'] ?? '00:00',
-        'end': localRates[i]['end'] ?? '00:00',
-        'price': double.tryParse(localRates[i]['price'].toString().replaceAll(',', '.')) ?? 0.0,
-      });
+      // PULIZIA E CONVERSIONE CERTA PER FIREBASE
+      List<Map<String, dynamic>> ratesToSave = localRates.map((rate) {
+        return {
+          'label': rate['label'] ?? 'F',
+          'start': rate['start'] ?? '00:00',
+          'end': rate['end'] ?? '00:00',
+          'price': double.tryParse(rate['price'].toString().replaceAll(',', '.')) ?? 0.0,
+        };
+      }).toList();
+
+      // SALVATAGGIO LOCALE
+      await prefs.setString('user_name', _userNameController.text);
+      await prefs.setString('car_plate', _carPlateController.text);
+      await prefs.setString('energyProvider', _providerController.text);
+      await prefs.setDouble('monoPrice', priceToSave);
+      await prefs.setBool('isMultirate', localIsMultirate);
+      await prefs.setString('rates', jsonEncode(ratesToSave));
+
+      // SALVATAGGIO CLOUD (Widget.userId è l'id passato dal main)
+      await FirebaseFirestore.instance.collection('users').doc(widget.userId).set({
+        'userName': _userNameController.text,
+        'carPlate': _carPlateController.text,
+        'energyProvider': _providerController.text,
+        'rates': ratesToSave,
+        'isMultirate': localIsMultirate,
+        'monoPrice': priceToSave,
+        'lastUpdate': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (!mounted) return;
+      Navigator.pop(context, true);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Impostazioni salvate con successo!")));
+    } catch (e) {
+      debugPrint("Errore durante il salvataggio: $e");
     }
-
-    // 3. SINCRONIZZAZIONE CLOUD (Firebase)
-    // Aggiungiamo userName e carPlate alla mappa inviata a Firestore
-    await FirebaseFirestore.instance.collection('users').doc(widget.userId).set({
-      'userName': _userNameController.text, // <--- Aggiunto
-      'carPlate': _carPlateController.text, // <--- Aggiunto
-      'energyProvider': _providerController.text,
-      'rates': ratesToSave,
-      'isMultirate': localIsMultirate,
-      'monoPrice': localMonoPrice,
-      'lastUpdate': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    if (!mounted) return;
-    
-    // Chiude la pagina e torna alla home passando "true" per dire che i dati sono cambiati
-    Navigator.pop(context, true);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Impostazioni salvate con successo!")),
-    );
-  } catch (e) {
-    debugPrint("Errore durante il salvataggio: $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Errore nel salvataggio: $e")),
-    );
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -164,31 +180,20 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Titolo che hai creato tu
-_buildSectionTitle("DATI INTESTAZIONE PDF"),
-
-// Campo Nome
-TextField(
-  controller: _userNameController,
-  style: const TextStyle(color: Colors.white),
-  decoration: const InputDecoration(
-    labelText: "Nome / Azienda",
-    prefixIcon: Icon(Icons.person, color: Colors.cyanAccent),
-  ),
-),
-
-const SizedBox(height: 15),
-
-// Campo Targa
-TextField(
-  controller: _carPlateController,
-  style: const TextStyle(color: Colors.white),
-  textCapitalization: TextCapitalization.characters,
-  decoration: const InputDecoration(
-    labelText: "Targa Veicolo",
-    prefixIcon: Icon(Icons.directions_car, color: Colors.cyanAccent),
-  ),
-),
+            _buildSectionTitle("DATI INTESTAZIONE PDF"),
+            TextField(
+              controller: _userNameController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(labelText: "Nome / Azienda", prefixIcon: Icon(Icons.person, color: Colors.cyanAccent)),
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              controller: _carPlateController,
+              style: const TextStyle(color: Colors.white),
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(labelText: "Targa Veicolo", prefixIcon: Icon(Icons.directions_car, color: Colors.cyanAccent)),
+            ),
+            const SizedBox(height: 20),
             const Text("ID UTENTE CLOUD", style: TextStyle(color: Colors.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Row(
@@ -200,35 +205,20 @@ TextField(
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.05),
-                      hintText: "Inserisci ID Utente",
-                      hintStyle: const TextStyle(color: Colors.white24),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                // --- NUOVO TASTO COPIA ---
                 IconButton(
                   icon: const Icon(Icons.copy_rounded, color: Colors.cyanAccent),
                   onPressed: () {
-                    if (_uidController.text.isNotEmpty) {
-                      Clipboard.setData(ClipboardData(text: _uidController.text));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("ID copiato negli appunti!"),
-                          backgroundColor: Colors.cyan,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
+                    Clipboard.setData(ClipboardData(text: _uidController.text));
                   },
-                  tooltip: "Copia ID",
                 ),
-                // --- TASTO DOWNLOAD ESISTENTE ---
                 IconButton(
                   icon: const Icon(Icons.cloud_download, color: Colors.cyanAccent),
                   onPressed: () => _fetchUserFromFirebase(_uidController.text),
-                  tooltip: "Recupera dati da questo ID",
                 ),
               ],
             ),
@@ -273,10 +263,9 @@ TextField(
               const Text("PREZZO MONORARIO (€/kWh)", style: TextStyle(color: Colors.cyanAccent, fontSize: 10)),
               const SizedBox(height: 8),
               TextField(
+                controller: _monoPriceController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                onChanged: (v) => localMonoPrice = double.tryParse(v.replaceAll(',', '.')) ?? 0.0,
-                controller: TextEditingController(text: localMonoPrice.toString().replaceAll('.', ',')),
                 decoration: const InputDecoration(prefixText: "€ ", prefixStyle: TextStyle(color: Colors.cyanAccent)),
               ),
             ] else ...[
@@ -288,27 +277,56 @@ TextField(
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-                  child: Column(
+                  child: Row(
                     children: [
-                      Row(
+                      Text("F${i + 1}", style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("F${i + 1}", style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: TextField(
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              style: const TextStyle(color: Colors.white),
-                              decoration: const InputDecoration(hintText: "Costo €/kWh", border: InputBorder.none),
-                              onChanged: (v) => localRates[i]['price'] = double.tryParse(v.replaceAll(',', '.')) ?? 0.0,
-                              controller: TextEditingController(text: localRates[i]['price'].toString()),
-                            ),
+                          const Text("INIZIO", style: TextStyle(color: Colors.white38, fontSize: 8)),
+                          TextButton(
+                            onPressed: () => _selectTime(i, 'start'),
+                            style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(50, 30)),
+                            child: Text(localRates[i]['start'], style: const TextStyle(color: Colors.white)),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                            onPressed: () => setState(() => localRates.removeAt(i)),
-                          )
                         ],
                       ),
+                      const Text("-", style: TextStyle(color: Colors.white24)),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("FINE", style: TextStyle(color: Colors.white38, fontSize: 8)),
+                          TextButton(
+                            onPressed: () => _selectTime(i, 'end'),
+                            style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(50, 30)),
+                            child: Text(localRates[i]['end'], style: const TextStyle(color: Colors.white)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("COSTO €/kWh", style: TextStyle(color: Colors.cyanAccent, fontSize: 8, fontWeight: FontWeight.bold)),
+                            TextFormField(
+                              key: ValueKey("price_${i}_${localRates[i]['price']}"), 
+                              initialValue: localRates[i]['price'].toString().replaceAll('.', ','),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                              decoration: const InputDecoration(hintText: "0,00", border: InputBorder.none, isDense: true),
+                              onChanged: (v) {
+                                localRates[i]['price'] = double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                        onPressed: () => setState(() => localRates.removeAt(i)),
+                      )
                     ],
                   ),
                 );
@@ -337,19 +355,11 @@ TextField(
       ),
     );
   }
-  // Questa funzione spiega a Flutter come disegnare i titoli colorati delle sezioni
+
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 15),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.cyanAccent, 
-          fontSize: 12, 
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.1
-        ),
-      ),
+      child: Text(title, style: const TextStyle(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
     );
   }
 }
