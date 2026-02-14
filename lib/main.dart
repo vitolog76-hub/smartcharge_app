@@ -1163,36 +1163,36 @@ Widget build(BuildContext context) {
   );
 
 // Helper per i bottoni piccoli della riga inferiore
-Widget _buildMiniButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
-  return SizedBox(
-    height: 75, // Aumentato di 5px per dare più respiro ai sensori touch di iPhone
-    child: OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: color,
-        side: BorderSide(color: color.withOpacity(0.5), width: 1.5),
-        padding: const EdgeInsets.symmetric(horizontal: 4), // Non mettere zero, lascia un minimo di margine
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        backgroundColor: color.withOpacity(0.08),
-        // FONDAMENTALE PER iOS:
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap, 
-      ),
-      onPressed: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 22),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 9, 
-              fontWeight: FontWeight.bold, 
-              height: 1.1,
-              color: Colors.white // Forza il colore del testo per la leggibilità
+  
+  Widget _buildMiniButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+  return Expanded( // Lo mettiamo qui per sicurezza, così occupa lo spazio corretto nella Row
+    child: GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque, // <--- Questo dice a iOS: "Tutta l'area è cliccabile"
+      child: Container(
+        height: 75,
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: color.withOpacity(0.5), width: 1.5),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 28, color: color), // Icona più grande per un target migliore
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: color.withOpacity(0.9),
+                height: 1.1,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );
@@ -1454,15 +1454,23 @@ void _showHistory() {
         ),
       ],
     ),
-                        IconButton(
-  icon: const Icon(Icons.add_circle_outline, color: Colors.cyanAccent, size: 30),
-  onPressed: () {
-    // Chiude momentaneamente la cronologia per non sovrapporre i popup
+                        
+GestureDetector(
+  behavior: HitTestBehavior.opaque, 
+  onTap: () {
     Navigator.pop(context); 
-    // Apre la finestra di inserimento dettagliata
     _showManualEntryDialog();
   },
+  child: const Padding(
+    padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10), 
+    child: Icon(
+      Icons.add_circle_outline, 
+      color: Colors.cyanAccent, 
+      size: 30
+    ),
+  ),
 ),
+
                       ],
                     ),
                   ),
