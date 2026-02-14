@@ -590,6 +590,7 @@ void initState() {
 }
 
   void _showPublicChargeDialog() {
+  print("Click ricevuto!");
   final TextEditingController providerCtrl = TextEditingController(text: "Enel X"); // Valore di default
   final TextEditingController kwhCtrl = TextEditingController();
   final TextEditingController costCtrl = TextEditingController();
@@ -1164,14 +1165,16 @@ Widget build(BuildContext context) {
 // Helper per i bottoni piccoli della riga inferiore
 Widget _buildMiniButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
   return SizedBox(
-    height: 70,
+    height: 75, // Aumentato di 5px per dare più respiro ai sensori touch di iPhone
     child: OutlinedButton(
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
         side: BorderSide(color: color.withOpacity(0.5), width: 1.5),
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.symmetric(horizontal: 4), // Non mettere zero, lascia un minimo di margine
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        backgroundColor: color.withOpacity(0.05),
+        backgroundColor: color.withOpacity(0.08),
+        // FONDAMENTALE PER iOS:
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap, 
       ),
       onPressed: onTap,
       child: Column(
@@ -1182,7 +1185,12 @@ Widget _buildMiniButton({required IconData icon, required String label, required
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, height: 1.1),
+            style: const TextStyle(
+              fontSize: 9, 
+              fontWeight: FontWeight.bold, 
+              height: 1.1,
+              color: Colors.white // Forza il colore del testo per la leggibilità
+            ),
           ),
         ],
       ),
