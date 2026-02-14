@@ -1455,18 +1455,24 @@ void _showHistory() {
       ],
     ),
                         
-GestureDetector(
-  behavior: HitTestBehavior.opaque, 
+
+InkWell(
   onTap: () {
-    Navigator.pop(context); 
+    print("LOG: Click su + rilevato");
+    Navigator.pop(context);
     _showManualEntryDialog();
   },
-  child: const Padding(
-    padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10), 
-    child: Icon(
-      Icons.add_circle_outline, 
-      color: Colors.cyanAccent, 
-      size: 30
+  // Usiamo un raggio di pressione per dare feedback visivo
+  borderRadius: BorderRadius.circular(30),
+  child: Container(
+    // Definiamo un'area fissa e larga
+    width: 55,
+    height: 55,
+    color: Colors.transparent, // Cambia in Colors.red se vuoi vedere l'area per test
+    child: const Icon(
+      Icons.add_circle_outline,
+      color: Colors.cyanAccent,
+      size: 32,
     ),
   ),
 ),
