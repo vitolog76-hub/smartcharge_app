@@ -1103,7 +1103,7 @@ Widget build(BuildContext context) {
 
   Widget _actionButtons() => Column(
     children: [
-      // 1. BLOCCO SIMULAZIONE (DA SOLO IN ALTO)
+      // 1. BLOCCO SIMULAZIONE (Sempre in alto)
       SizedBox(
         width: double.infinity,
         height: 60,
@@ -1123,40 +1123,50 @@ Widget build(BuildContext context) {
         ),
       ),
 
-      const SizedBox(height: 15),
+      const SizedBox(height: 12),
 
-      // 2. BLOCCO GESTIONE DATI (3 PULSANTI ALLINEATI)
+      // 2. BLOCCO GESTIONE DATI (I tuoi 3 pulsanti originali)
       Row(
         children: [
-          // REGISTRA PUBBLICA (Blu)
-          Expanded(
-            child: _buildMiniButton(
-              icon: Icons.ev_station,
-              label: "CARICA\nPUBBLICA",
-              color: Colors.blueAccent,
-              onTap: () => _showPublicChargeDialog(),
-            ),
+          _buildMiniButton(
+            icon: Icons.ev_station,
+            label: "CARICA\nPUBBLICA",
+            color: Colors.blueAccent,
+            onTap: () => _showPublicChargeDialog(),
           ),
           const SizedBox(width: 8),
-          // SALVA PARZIALE (Bianco/Grey)
-          Expanded(
-            child: _buildMiniButton(
-              icon: Icons.save_outlined,
-              label: "SALVA\nCARICA PARZIALE",
-              color: Colors.white70,
-              onTap: () => _save(false),
-            ),
+          _buildMiniButton(
+            icon: Icons.save_outlined,
+            label: "SALVA\nPARZIALE",
+            color: Colors.white70,
+            onTap: () => _save(false),
           ),
           const SizedBox(width: 8),
-          // SALVA TOTALE (Verde)
-          Expanded(
-            child: _buildMiniButton(
-              icon: Icons.check_circle,
-              label: "SALVA\nCARICA TOTALE",
-              color: Colors.greenAccent,
-              onTap: () => _save(true),
-            ),
+          _buildMiniButton(
+            icon: Icons.check_circle,
+            label: "SALVA\nTOTALE",
+            color: Colors.greenAccent,
+            onTap: () => _save(true),
           ),
+        ],
+      ),
+
+      const SizedBox(height: 12),
+
+      // 3. NUOVA RIGA: SOLO CARICA MANUALE (Così non hai errori di 'userId')
+      Row(
+        children: [
+          _buildMiniButton(
+            icon: Icons.edit_calendar,
+            label: "CARICA\nMANUALE",
+            color: Colors.orangeAccent,
+            onTap: () => _showManualEntryDialog(),
+          ),
+          // Questi due servono a mantenere il pulsante arancione della stessa misura degli altri
+          const SizedBox(width: 8),
+          const Expanded(child: SizedBox()),
+          const SizedBox(width: 8),
+          const Expanded(child: SizedBox()),
         ],
       ),
     ],
@@ -1456,26 +1466,7 @@ void _showHistory() {
     ),
                         
 
-InkWell(
-  onTap: () {
-    print("LOG: Click su + rilevato");
-    Navigator.pop(context);
-    _showManualEntryDialog();
-  },
-  // Usiamo un raggio di pressione per dare feedback visivo
-  borderRadius: BorderRadius.circular(30),
-  child: Container(
-    // Definiamo un'area fissa e larga
-    width: 55,
-    height: 55,
-    color: Colors.transparent, // Cambia in Colors.red se vuoi vedere l'area per test
-    child: const Icon(
-      Icons.add_circle_outline,
-      color: Colors.cyanAccent,
-      size: 32,
-    ),
-  ),
-),
+
 
                       ],
                     ),
