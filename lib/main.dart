@@ -1279,6 +1279,7 @@ Widget _buildMiniButton({required IconData icon, required String label, required
   }
 
   void _showManualEntry(Function setModal) {
+  print("DEBUG: Funzione _showManualEntry chiamata!");
   DateTime manualDate = DateTime.now();
   TimeOfDay manualTime = TimeOfDay.now();
   final TextEditingController kwhCtrl = TextEditingController();
@@ -1718,6 +1719,7 @@ void _showManualEntryDialog() async {
 
   showDialog(
     context: context,
+    useRootNavigator: true,
     builder: (c) => StatefulBuilder(
       builder: (context, setModal) => AlertDialog(
         backgroundColor: const Color(0xFF0A141D),
