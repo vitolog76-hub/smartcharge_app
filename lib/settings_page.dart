@@ -53,6 +53,9 @@ class _SettingsPageState extends State<SettingsPage> {
     _loadUserData();
   }
 
+  
+  
+  
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -199,16 +202,30 @@ class _SettingsPageState extends State<SettingsPage> {
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _uidController,
-                    style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.05),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    ),
-                  ),
-                ),
+  child: TextField(
+    controller: _uidController,
+    style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
+    decoration: InputDecoration(
+      filled: true,
+      fillColor: Colors.white.withOpacity(0.05),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12), 
+        borderSide: BorderSide.none
+      ),
+      // --- AGGIUNGIAMO LA LENTE DI INGRANDIMENTO ---
+      suffixIcon: IconButton(
+        icon: const Icon(Icons.search, color: Colors.cyanAccent),
+        onPressed: () {
+          _fetchUserFromFirebase(_uidController.text);
+        },
+      ),
+      hintText: "Inserisci UID",
+      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+    ),
+    // --- AGGIUNGIAMO L'INVIO DA TASTIERA ---
+    onSubmitted: (value) => _fetchUserFromFirebase(value),
+  ),
+),
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.copy_rounded, color: Colors.cyanAccent),
