@@ -263,7 +263,9 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   @override
 void initState() {
+  
   super.initState();
+  _loadSimSettings();
   _loadData();
   
   // Sincronizza il file locale con Firestore e poi aggiorna la UI
@@ -287,6 +289,55 @@ void initState() {
     } catch (e) { debugPrint("Firestore: $e"); }
   }
 
+// Salva i dati della simulazione
+Future<void> _saveSimSettings() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setDouble('last_soc_start', socStart);
+  await prefs.setDouble('last_soc_target', socTarget);
+  await prefs.setDouble('last_wallbox_pwr', wallboxPwr);
+  await prefs.setBool('last_is_active', isActive);
+  await prefs.setString('last_vehicle', selectedVehicle);
+}
+
+// Carica i dati all'avvio
+Future<void> _loadSimSettings() async {
+  final prefs = await SharedPreferences.getInstance();
+  setState(() {
+    // 1. Identità e UI
+    userId = prefs.getString('last_user_id') ?? ""; 
+    _uidCtrl.text = userId;
+
+    // 2. Veicolo e Batteria
+    selectedVehicle = prefs.getString('last_vehicle') ?? "Manuale / Altro";
+    batteryCap = prefs.getDouble('cap') ?? 44.0;
+    _capCtrl.text = batteryCap.toStringAsFixed(1);
+
+    // 3. Cronologia
+    String? historyJson = prefs.getString('local_history');
+    if (historyJson != null) {
+      history = List<Map<String, dynamic>>.from(jsonDecode(historyJson));
+    }
+
+    // 4. Costi e Fornitore (Aggiunti per coerenza)
+    energyProvider = prefs.getString('energyProvider') ?? "Generico";
+    monoPrice = prefs.getDouble('monoPrice') ?? 0.20;
+    isMultirate = prefs.getBool('isMultirate') ?? false;
+    String? ratesJson = prefs.getString('rates');
+    if (ratesJson != null) {
+      rates = List<Map<String, dynamic>>.from(jsonDecode(ratesJson));
+    }
+
+    // 5. Parametri simulazione
+    socStart = prefs.getDouble('last_soc_start') ?? 20.0;
+    socTarget = prefs.getDouble('last_soc_target') ?? 80.0;
+    wallboxPwr = prefs.getDouble('last_wallbox_pwr') ?? 3.7;
+    _pwrCtrl.text = wallboxPwr.toStringAsFixed(1);
+    currentSoc = socStart; 
+  });
+}
+
+  
+  
   Future<void> _syncCarsDatabase() async {
   try {
     final String response = await rootBundle.loadString('assets/cars.json');
@@ -319,8 +370,8 @@ void initState() {
   }
 }
   Future<void> _forceFirebaseSync() async {
-  // SE STA SINCRONIZZANDO O SE LA HISTORY LOCALE È VUOTA, NON SCRIVERE
-  if (_isSyncing || userId.isEmpty || history.isEmpty) return;
+  // Rimosso history.isEmpty per permettere il salvataggio dei parametri anche senza ricariche effettuate
+  if (_isSyncing || userId.isEmpty) return;
 
   try {
     await FirebaseFirestore.instance.collection('users').doc(userId).set({
@@ -329,6 +380,12 @@ void initState() {
       'isMultirate': isMultirate,
       'monoPrice': monoPrice,
       'rates': rates,
+      // --- AGGIUNGI QUESTI CAMPI FONDAMENTALI ---
+      'vehicleName': selectedVehicle,
+      'cap': batteryCap,
+      'pwr': wallboxPwr,
+      'cost': costPerKwh,
+      // ------------------------------------------
       'lastUpdate': DateTime.now().toIso8601String(),
     }, SetOptions(merge: true));
   } catch (e) {
@@ -338,8 +395,7 @@ void initState() {
 
   void _syncUser(String newId) async {
   if (newId.isEmpty) return;
-  
-  setState(() => _isSyncing = true); // BLOCCA ALTRI SALVATAGGI
+  setState(() => _isSyncing = true);
 
   try {
     final doc = await FirebaseFirestore.instance.collection('users').doc(newId).get();
@@ -347,7 +403,6 @@ void initState() {
     if (doc.exists) {
       var data = doc.data()!;
       
-      // Carica la cronologia in locale
       List<Map<String, dynamic>> fetchedHistory = [];
       if (data['history'] != null) {
         fetchedHistory = List<Map<String, dynamic>>.from(data['history']);
@@ -356,25 +411,30 @@ void initState() {
 
       setState(() {
         userId = newId;
-        history = fetchedHistory; // ORA LA CRONOLOGIA LOCALE È ALLINEATA AL CLOUD
+        history = fetchedHistory; // ASSEGNAZIONE LOG
+        selectedVehicle = data['vehicleName'] ?? 'Manuale / Altro';
+        batteryCap = (data['cap'] ?? 44.0).toDouble();
+        
+        // AGGIORNA I BOX DI TESTO
+        _uidCtrl.text = newId;
+        _capCtrl.text = batteryCap.toStringAsFixed(1);
+
         energyProvider = data['provider'] ?? 'Generico';
         isMultirate = data['isMultirate'] ?? false;
         monoPrice = (data['monoPrice'] ?? 0.20).toDouble();
-        if (data['rates'] != null) {
-          rates = (data['rates'] as List).map((e) => Map<String, dynamic>.from(e)).toList();
-        }
       });
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('uid', newId);
-      await prefs.setString('logs', jsonEncode(history));
+      await prefs.setString('last_user_id', newId);
       
-      _showSnack("Dati recuperati con successo!");
+      // CHIAVE FONDAMENTALE PER LA CRONOLOGIA
+      await prefs.setString('local_history', jsonEncode(history)); 
+      
+      await prefs.setString('last_vehicle', selectedVehicle);
+      await prefs.setDouble('cap', batteryCap);
     }
-  } catch (e) {
-    debugPrint("Errore Sync: $e");
   } finally {
-    setState(() => _isSyncing = false); // SBLOCCA
+    setState(() => _isSyncing = false);
   }
 }
 
@@ -542,18 +602,23 @@ void initState() {
       costPerKwh = cost; 
       _costCtrl.text = cost.toStringAsFixed(2); 
     }
-    // AGGIUNGI QUESTO: Aggiorna la variabile di stato se viene passato un nome
     if (vName != null) {
       selectedVehicle = vName;
     }
   });
 
+  // Salvataggio parametri tecnici
   if (pwr != null) await prefs.setDouble('pwr', wallboxPwr);
   if (cap != null) await prefs.setDouble('cap', batteryCap);
   if (cost != null) await prefs.setDouble('cost', costPerKwh);
   
-  // AGGIUNGI QUESTO: Salva sempre il nome del veicolo corrente nelle preferenze
+  // Salvataggio veicolo e stato simulazione
   await prefs.setString('vehicleName', selectedVehicle);
+  
+  // --- CORREZIONE NOMI QUI SOTTO ---
+  await prefs.setDouble('last_soc_start', socStart); // Usato socStart, non startSoc
+  await prefs.setDouble('last_soc_target', socTarget); // Usato socTarget, non targetSoc
+  await prefs.setBool('isActive', isActive); 
 
   _recalcSchedule();
   _forceFirebaseSync();
@@ -584,6 +649,7 @@ void initState() {
       
       prefs.setDouble('soc_s', socStart);
       prefs.setDouble('currentSoc', currentSoc);
+      _saveSimSettings();
     }
   });
   prefs.setBool('isActive', isActive);
@@ -1065,17 +1131,42 @@ Widget build(BuildContext context) {
     ],
   );
 
-  Widget _sliderRow(String lab, String val, double v, double min, double max, double step, Color c, Function(double) onC) => Column(children: [
+  Widget _sliderRow(String lab, String val, double v, double min, double max, double step, Color c, Function(double) onC) {
+  return Column(children: [
     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
       Text(lab, style: const TextStyle(fontSize: 10, color: Colors.white38)), 
       Text(val, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: c))
     ]),
     Row(children: [
-      IconButton(icon: const Icon(Icons.remove_circle_outline, size: 20, color: Colors.white24), onPressed: () => onC((v - step).clamp(min, max))),
-      Expanded(child: Slider(value: v.clamp(min, max), min: min, max: max, activeColor: c, onChanged: onC)),
-      IconButton(icon: const Icon(Icons.add_circle_outline, size: 20, color: Colors.white24), onPressed: () => onC((v + step).clamp(min, max))),
+      IconButton(
+        icon: const Icon(Icons.remove_circle_outline, size: 20, color: Colors.white24), 
+        onPressed: () {
+          onC((v - step).clamp(min, max));
+          _saveSimSettings(); // <--- SALVA AL CLICK SUL MENO
+        }
+      ),
+      Expanded(
+        child: Slider(
+          value: v.clamp(min, max), 
+          min: min, 
+          max: max, 
+          activeColor: c, 
+          onChanged: (newValue) {
+            onC(newValue);
+            _saveSimSettings(); // <--- SALVA QUANDO TRASCINI
+          }
+        )
+      ),
+      IconButton(
+        icon: const Icon(Icons.add_circle_outline, size: 20, color: Colors.white24), 
+        onPressed: () {
+          onC((v + step).clamp(min, max));
+          _saveSimSettings(); // <--- SALVA AL CLICK SUL PIÙ
+        }
+      ),
     ]),
   ]);
+}
 
   Widget _sliderRowWithAction(String lab, String val, double v, double min, double max, double step, Color c, Function(double) onC, VoidCallback onAct) => Column(children: [
     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -1224,18 +1315,19 @@ Widget build(BuildContext context) {
 
   if (result != null && result is Map<String, dynamic>) {
     String newId = result['newUserId'];
-    // Se l'ID è cambiato, forza la sincronizzazione dal cloud
-    if (newId != userId) {
+    
+    if (newId != userId && newId.isNotEmpty) {
+      // Se l'ID è diverso, scarica tutto (cronologia, auto, ecc.)
       _syncUser(newId); 
     } else {
-      // Altrimenti aggiorna solo i parametri locali
+      // Se l'ID è lo stesso, aggiorna solo i parametri modificati
       setState(() {
         rates = result['rates'];
         isMultirate = result['isMultirate'];
         monoPrice = result['monoPrice'];
         energyProvider = result['provider'];
       });
-      _forceFirebaseSync(); // Salva i nuovi settaggi sull'ID corrente
+      _forceFirebaseSync(); 
     }
   }
 }

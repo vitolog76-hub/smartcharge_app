@@ -127,46 +127,57 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveAndSync() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      double priceToSave = double.tryParse(_monoPriceController.text.replaceAll(',', '.')) ?? 0.0;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    
+    String newUid = _uidController.text.trim();
+    String provider = _providerController.text.trim();
+    String userName = _userNameController.text.trim();
+    String carPlate = _carPlateController.text.trim();
+    double priceToSave = double.tryParse(_monoPriceController.text.replaceAll(',', '.')) ?? 0.0;
 
-      // PULIZIA E CONVERSIONE CERTA PER FIREBASE
-      List<Map<String, dynamic>> ratesToSave = localRates.map((rate) {
-        return {
-          'label': rate['label'] ?? 'F',
-          'start': rate['start'] ?? '00:00',
-          'end': rate['end'] ?? '00:00',
-          'price': double.tryParse(rate['price'].toString().replaceAll(',', '.')) ?? 0.0,
-        };
-      }).toList();
+    // SALVATAGGIO LOCALE (Chiavi sincronizzate con _loadSimSettings)
+    await prefs.setString('last_user_id', newUid);
+    await prefs.setString('energyProvider', provider);
+    await prefs.setString('user_name', userName);
+    await prefs.setString('car_plate', carPlate);
+    await prefs.setDouble('monoPrice', priceToSave);
+    await prefs.setBool('isMultirate', localIsMultirate);
+    await prefs.setString('rates', jsonEncode(localRates));
 
-      // SALVATAGGIO LOCALE
-      await prefs.setString('user_name', _userNameController.text);
-      await prefs.setString('car_plate', _carPlateController.text);
-      await prefs.setString('energyProvider', _providerController.text);
-      await prefs.setDouble('monoPrice', priceToSave);
-      await prefs.setBool('isMultirate', localIsMultirate);
-      await prefs.setString('rates', jsonEncode(ratesToSave));
-
-      // SALVATAGGIO CLOUD (Widget.userId è l'id passato dal main)
-      await FirebaseFirestore.instance.collection('users').doc(widget.userId).set({
-        'userName': _userNameController.text,
-        'carPlate': _carPlateController.text,
-        'energyProvider': _providerController.text,
-        'rates': ratesToSave,
+    // SALVATAGGIO CLOUD
+    if (newUid.isNotEmpty) {
+      await FirebaseFirestore.instance.collection('users').doc(newUid).set({
+        'provider': provider, // Usiamo 'provider' come chiave Cloud
+        'userName': userName,
+        'carPlate': carPlate,
+        'rates': localRates,
         'isMultirate': localIsMultirate,
         'monoPrice': priceToSave,
         'lastUpdate': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-
-      if (!mounted) return;
-      Navigator.pop(context, true);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Impostazioni salvate con successo!")));
-    } catch (e) {
-      debugPrint("Errore durante il salvataggio: $e");
     }
+
+    if (!mounted) return;
+
+    // Risultato per la funzione _showSettings nel main.dart
+    final Map<String, dynamic> resultData = {
+      'newUserId': newUid,
+      'rates': localRates,
+      'isMultirate': localIsMultirate,
+      'monoPrice': priceToSave,
+      'provider': provider,
+    };
+
+    Navigator.pop(context, resultData);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Impostazioni salvate!"), backgroundColor: Colors.green),
+    );
+  } catch (e) {
+    debugPrint("Errore: $e");
   }
+}
 
   @override
   Widget build(BuildContext context) {
