@@ -16,3 +16,4 @@ test/*.apk
 *.uploaded
 serviceAccountKey.json
 serviceAccountKey.json
+serviceAccountKey.json

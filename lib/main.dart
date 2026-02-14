@@ -1279,31 +1279,88 @@ Widget _buildMiniButton({required IconData icon, required String label, required
   }
 
   void _showManualEntry(Function setModal) {
-    DateTime manualDate = DateTime.now();
-    TimeOfDay manualTime = TimeOfDay.now();
-    final TextEditingController kwhCtrl = TextEditingController();
-    showDialog(context: context, builder: (c) => StatefulBuilder(builder: (c, st) => AlertDialog(
-      backgroundColor: const Color(0xFF0A141D),
-      title: Text(t('inserimento_manuale'), style: TextStyle(color: Colors.cyanAccent, fontSize: 16)),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        ListTile(title: Text(DateFormat('dd/MM/yyyy').format(manualDate)), leading: const Icon(Icons.calendar_today), onTap: () async { final d = await showDatePicker(context: context, initialDate: manualDate, firstDate: DateTime(2020), lastDate: DateTime.now()); if(d != null) st(() => manualDate = d); }),
-        ListTile(title: Text(manualTime.format(context)), leading: const Icon(Icons.access_time), onTap: () async { final t = await showTimePicker(context: context, initialTime: manualTime); if(t != null) st(() => manualTime = t); }),
-        TextField(controller: kwhCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "kWh caricati", suffixText: "kWh")),
-      ]),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(c), child: const Text("ANNULLA")),
-        ElevatedButton(onPressed: () {
-          double? k = double.tryParse(kwhCtrl.text.replaceAll(',', '.'));
-          if (k != null) {
-            DateTime finalDt = DateTime(manualDate.year, manualDate.month, manualDate.day, manualTime.hour, manualTime.minute);
-            _addLogEntry(finalDt, k);
-            Navigator.pop(c);
-            setModal(() {}); 
-          }
-        }, child: const Text("SALVA"))
-      ],
-    )));
-  }
+  DateTime manualDate = DateTime.now();
+  TimeOfDay manualTime = TimeOfDay.now();
+  final TextEditingController kwhCtrl = TextEditingController();
+
+  // Usiamo il rootNavigator per essere sicuri che iOS lo mostri sopra a tutto
+  showDialog(
+    context: context,
+    useRootNavigator: true, // Fondamentale per iOS
+    builder: (c) => StatefulBuilder(
+      builder: (ctx, st) => AlertDialog(
+        backgroundColor: const Color(0xFF0A141D),
+        title: Text(
+          t('inserimento_manuale'),
+          style: const TextStyle(color: Colors.cyanAccent, fontSize: 16),
+        ),
+        content: SingleChildScrollView( // Aggiunto per evitare errori di pixel con la tastiera su iPhone
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text(DateFormat('dd/MM/yyyy').format(manualDate)),
+                leading: const Icon(Icons.calendar_today, color: Colors.white),
+                onTap: () async {
+                  final d = await showDatePicker(
+                    context: ctx,
+                    initialDate: manualDate,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (d != null) st(() => manualDate = d);
+                },
+              ),
+              ListTile(
+                title: Text(manualTime.format(ctx)),
+                leading: const Icon(Icons.access_time, color: Colors.white),
+                onTap: () async {
+                  final t = await showTimePicker(context: ctx, initialTime: manualTime);
+                  if (t != null) st(() => manualTime = t);
+                },
+              ),
+              TextField(
+                controller: kwhCtrl,
+                style: const TextStyle(color: Colors.white),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: "kWh caricati",
+                  labelStyle: TextStyle(color: Colors.cyanAccent),
+                  suffixText: "kWh",
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c),
+            child: const Text("ANNULLA"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent),
+            onPressed: () {
+              // Chiude la tastiera su iOS
+              FocusScope.of(ctx).unfocus();
+              
+              double? k = double.tryParse(kwhCtrl.text.replaceAll(',', '.'));
+              if (k != null) {
+                DateTime finalDt = DateTime(
+                  manualDate.year, manualDate.month, manualDate.day,
+                  manualTime.hour, manualTime.minute
+                );
+                _addLogEntry(finalDt, k);
+                Navigator.pop(c);
+                setModal(() {});
+              }
+            },
+            child: const Text("SALVA", style: TextStyle(color: Colors.black)),
+          )
+        ],
+      ),
+    ),
+  );
+}
 
 void _showHistory() {
     showModalBottomSheet(
