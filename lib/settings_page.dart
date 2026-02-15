@@ -1,394 +1,330 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
-import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
 class SettingsPage extends StatefulWidget {
   final String userId;
-  final List<Map<String, dynamic>> initialRates;
-  final bool initialIsMultirate;
-  final double initialMonoPrice;
-  final String initialProvider;
-  
-  const SettingsPage({
-    super.key,
-    required this.userId,
-    required this.initialRates,
-    required this.initialIsMultirate,
-    required this.initialMonoPrice,
-    this.initialProvider = "Generico",
-  });
+  const SettingsPage({super.key, required this.userId});
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  // Inizializziamo subito i controller invece di usare 'late'
-  final _uidController = TextEditingController();
-  final _providerController = TextEditingController();
-  final _userNameController = TextEditingController();
-  final _vehicleController = TextEditingController();
-  final _batteryCapController = TextEditingController();
-  final _carPlateController = TextEditingController();
-  final _monoPriceController = TextEditingController();
+  // Controller per i campi di testo
+  final TextEditingController _uidController = TextEditingController();
+  final TextEditingController _userNameController = TextEditingController();
+  final TextEditingController _batteryCapController = TextEditingController();
+  final TextEditingController _vehicleController = TextEditingController();
+  final TextEditingController _providerController = TextEditingController();
+  final TextEditingController _monoPriceController = TextEditingController();
 
-  // Variabili di stato con valori di default
-  List<Map<String, dynamic>> localRates = [];
-  bool localIsMultirate = false;
-  double localMonoPrice = 0.0;
-
-@override
-void initState() {
-  super.initState();
-
-  // 1. Inizializza il controller vuoto (per evitare il crash "late")
-  // (Assicurati che sia dichiarato come: final _uidController = TextEditingController();)
-
-  // 2. ASPETTA CHE IL FRAME SIA DISEGNATO PRIMA DI CERCARE L'ID
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    _effettuaLoginERecuperaID();
-  });
-}
-
-// Crea questa nuova funzione più robusta
-Future<void> _effettuaLoginERecuperaID() async {
-  final user = FirebaseAuth.instance.currentUser;
-  
-  if (user != null) {
-    setState(() {
-      _uidController.text = user.uid;
-    });
-    print("✅ ID recuperato: ${user.uid}");
-  } else {
-    print("⚠️ Nessun utente trovato, il login nel main ha fallito.");
-    setState(() {
-      _uidController.text = "NON LOGGATO";
-    });
+  @override
+  void initState() {
+    super.initState();
+    _uidController.text = widget.userId;
+    _loadInitialData();
   }
-}
   
-  
-  
-  Future<void> _loadUserData() async {
-  // 1. Recupera l'utente attuale (che è anonimo)
-  final user = FirebaseAuth.instance.currentUser;
-
-  if (user != null) {
-    setState(() {
-      // Scrive l'ID nel controller così lo vedi a video
-      _uidController.text = user.uid;
-    });
-    print("ID UTENTE VISUALIZZATO: ${user.uid}");
-  } else {
-    print("ATTENZIONE: Nessun utente trovato!");
-  }
-}
-  
-  Future<void> _selectTime(int index, String field) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(
-        hour: int.parse(localRates[index][field].split(':')[0]),
-        minute: int.parse(localRates[index][field].split(':')[1]),
+  // --- AGGIUNGI QUESTO METODO IN FONDO ALLA CLASSE _SettingsPageState ---
+  Widget _buildSectionCard({
+    required String title, 
+    required IconData icon, 
+    required Color color, 
+    required Widget child
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05), // Effetto vetro scuro
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 10),
+              Text(
+                title.toUpperCase(), 
+                style: TextStyle(
+                  color: color, 
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 12,
+                  letterSpacing: 1.1,
+                )
+              ),
+            ],
+          ),
+          const Divider(color: Colors.white10, height: 25, thickness: 1),
+          child,
+        ],
       ),
     );
-    if (picked != null) {
-      setState(() {
-        localRates[index][field] = "${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}";
-      });
-    }
+  }
+  
+  Future<void> _downloadFromCloud() async {
+  String uid = _uidController.text.trim();
+  if (uid.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Inserisci un ID Utente prima!")));
+    return;
   }
 
-  Future<void> _fetchUserFromFirebase(String uid) async {
-    if (uid.isEmpty) return;
-    try {
-      DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      if (doc.exists) {
-        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-        setState(() {
-          _providerController.text = data['energyProvider'] ?? "Generico";
-          _userNameController.text = data['userName'] ?? "";
-          _carPlateController.text = data['carPlate'] ?? "";
-          localIsMultirate = data['isMultirate'] ?? false;
-          
-          double cloudPrice = (data['monoPrice'] ?? 0.20).toDouble();
-          _monoPriceController.text = cloudPrice.toString().replaceAll('.', ',');
-          
-          if (data['rates'] != null) {
-            localRates = List<Map<String, dynamic>>.from(data['rates']);
-          }
-        });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Dati recuperati con successo!")));
-      }
-    } catch (e) {
-      debugPrint("Errore: $e");
-    }
-  }
-
-  Future<void> _saveAndSync() async {
   try {
-    final prefs = await SharedPreferences.getInstance();
+    DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
     
-    String newUid = _uidController.text.trim();
-    String provider = _providerController.text.trim();
-    String userName = _userNameController.text.trim();
-    String carPlate = _carPlateController.text.trim();
-    double priceToSave = double.tryParse(_monoPriceController.text.replaceAll(',', '.')) ?? 0.0;
+    if (doc.exists) {
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      final prefs = await SharedPreferences.getInstance();
 
-    // SALVATAGGIO LOCALE (Chiavi sincronizzate con _loadSimSettings)
-    await prefs.setString('last_user_id', newUid);
-    await prefs.setString('energyProvider', provider);
-    await prefs.setString('user_name', userName);
-    await prefs.setString('car_plate', carPlate);
-    await prefs.setDouble('monoPrice', priceToSave);
-    await prefs.setBool('isMultirate', localIsMultirate);
-    await prefs.setString('rates', jsonEncode(localRates));
+      setState(() {
+        // 1. Aggiorniamo i controller a video
+        _userNameController.text = data['userName'] ?? "";
+        _providerController.text = data['provider'] ?? "Generico";
+        _batteryCapController.text = (data['batteryCap'] ?? 44.0).toString();
+        _monoPriceController.text = (data['monoPrice'] ?? 0.20).toString();
+        _vehicleController.text = data['vehicleName'] ?? "Manuale / Altro";
 
-    // SALVATAGGIO CLOUD
-    if (newUid.isNotEmpty) {
-      await FirebaseFirestore.instance.collection('users').doc(newUid).set({
-        'provider': provider, // Usiamo 'provider' come chiave Cloud
-        'userName': userName,
-        'carPlate': carPlate,
-        'rates': localRates,
-        'isMultirate': localIsMultirate,
-        'monoPrice': priceToSave,
-        'lastUpdate': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+        // 2. Salviamo subito nelle SharedPreferences (Dati Gold)
+        prefs.setString('last_user_id', uid);
+        prefs.setString('userName', _userNameController.text);
+        prefs.setString('provider', _providerController.text);
+        prefs.setDouble('batteryCap', double.tryParse(_batteryCapController.text) ?? 44.0);
+        prefs.setDouble('monoPrice', double.tryParse(_monoPriceController.text) ?? 0.20);
+        prefs.setString('vehicleName', _vehicleController.text);
+        
+        if (data['history'] != null) {
+          prefs.setString('logs', jsonEncode(data['history']));
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ Dati scaricati con successo!")));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("⚠️ Nessun dato trovato per questo ID")));
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Errore download: $e")));
+  }
+}
+
+  // 1. CARICAMENTO DATI (Legge quello che ha salvato la Dashboard o l'utente)
+  Future<void> _loadInitialData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      // Usiamo 'batteryCap' come chiave unica per la capacità
+      double savedCap = prefs.getDouble('batteryCap') ?? 44.0;
+      _batteryCapController.text = savedCap.toStringAsFixed(1);
+      
+      // Usiamo 'vehicleName' come chiave unica per il modello
+      _vehicleController.text = prefs.getString('vehicleName') ?? "Manuale / Altro";
+      
+      _userNameController.text = prefs.getString('userName') ?? "";
+      _providerController.text = prefs.getString('provider') ?? "Generico";
+      
+      double savedPrice = prefs.getDouble('monoPrice') ?? 0.20;
+      _monoPriceController.text = savedPrice.toStringAsFixed(2);
+    });
+  }
+
+  // 2. SALVATAGGIO (Il metodo che vince su tutto)
+  Future<void> _saveAll() async {
+  String uid = _uidController.text.trim();
+  if (uid.isEmpty) return;
+
+  final prefs = await SharedPreferences.getInstance();
+  
+  // 1. Verifichiamo se l'ID è cambiato rispetto a quello attuale
+  String? oldUid = prefs.getString('last_user_id');
+  bool isNewUser = oldUid != uid;
+
+  try {
+    // 2. Se l'ID è nuovo, proviamo a vedere se ha già dati sul Cloud
+    if (isNewUser) {
+      debugPrint("🔍 Cambio ID rilevato. Controllo dati per: $uid");
+      DocumentSnapshot newDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      
+      if (newDoc.exists) {
+        // Se l'utente esiste, carichiamo i SUOI dati nelle memorie locali
+        Map<String, dynamic> cloudData = newDoc.data() as Map<String, dynamic>;
+        
+        await prefs.setDouble('batteryCap', (cloudData['batteryCap'] ?? 44.0).toDouble());
+        await prefs.setString('vehicleName', cloudData['vehicleName'] ?? "Manuale / Altro");
+        await prefs.setDouble('monoPrice', (cloudData['monoPrice'] ?? 0.20).toDouble());
+        await prefs.setString('userName', cloudData['userName'] ?? "");
+        await prefs.setString('provider', cloudData['provider'] ?? "Generico");
+        
+        // Sincronizziamo anche i log se presenti
+        if (cloudData['history'] != null) {
+          await prefs.setString('logs', jsonEncode(cloudData['history']));
+        }
+        
+        debugPrint("✅ Dati recuperati dal Cloud per il nuovo ID.");
+      }
     }
 
-    if (!mounted) return;
+    // 3. Preparazione dati per il salvataggio (quello che vedi a schermo)
+    double finalCap = double.tryParse(_batteryCapController.text.replaceAll(',', '.')) ?? 44.0;
+    double finalPrice = double.tryParse(_monoPriceController.text.replaceAll(',', '.')) ?? 0.20;
 
-    // Risultato per la funzione _showSettings nel main.dart
-    final Map<String, dynamic> resultData = {
-      'newUserId': newUid,
-      'rates': localRates,
-      'isMultirate': localIsMultirate,
-      'monoPrice': priceToSave,
-      'provider': provider,
+    // Recuperiamo la cronologia (quella appena scaricata o quella attuale)
+    String historyRaw = prefs.getString('logs') ?? '[]';
+    List<dynamic> currentHistory = jsonDecode(historyRaw);
+
+    Map<String, dynamic> userData = {
+      'userName': _userNameController.text,
+      'provider': _providerController.text,
+      'batteryCap': finalCap,
+      'monoPrice': finalPrice,
+      'vehicleName': _vehicleController.text,
+      'history': currentHistory,
+      'lastUpdate': DateTime.now().toIso8601String(),
     };
 
-    Navigator.pop(context, resultData);
+    // 4. Salvataggio su Firestore (Collection 'users')
+    await FirebaseFirestore.instance.collection('users').doc(uid).set(userData, SetOptions(merge: true));
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Impostazioni salvate!"), backgroundColor: Colors.green),
-    );
+    // 5. Salvataggio Locale definitivo
+    await prefs.setString('last_user_id', uid);
+    await prefs.setDouble('batteryCap', finalCap);
+    await prefs.setString('vehicleName', _vehicleController.text);
+    await prefs.setDouble('monoPrice', finalPrice);
+    await prefs.setString('userName', _userNameController.text);
+    await prefs.setString('provider', _providerController.text);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Profilo aggiornato e sincronizzato!"))
+      );
+      // Passiamo il nuovo UID indietro alla dashboard per sicurezza
+      Navigator.pop(context, uid); 
+    }
   } catch (e) {
-    debugPrint("Errore: $e");
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Errore durante il cambio ID: $e"))
+      );
+    }
   }
 }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0E21),
-      appBar: AppBar(
-        title: const Text("IMPOSTAZIONI CONTRATTO", style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionTitle("DATI INTESTAZIONE PDF"),
-            TextField(
-              controller: _userNameController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: "Nome / Azienda", prefixIcon: Icon(Icons.person, color: Colors.cyanAccent)),
-            ),
-            const SizedBox(height: 15),
-            TextField(
-              controller: _carPlateController,
-              style: const TextStyle(color: Colors.white),
-              textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(labelText: "Targa Veicolo", prefixIcon: Icon(Icons.directions_car, color: Colors.cyanAccent)),
-            ),
-            const SizedBox(height: 20),
-            const Text("ID UTENTE CLOUD", style: TextStyle(color: Colors.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-  child: TextField(
-    controller: _uidController,
-    style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
-    decoration: InputDecoration(
-      filled: true,
-      fillColor: Colors.white.withOpacity(0.05),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12), 
-        borderSide: BorderSide.none
-      ),
-      // --- AGGIUNGIAMO LA LENTE DI INGRANDIMENTO ---
-      suffixIcon: IconButton(
-        icon: const Icon(Icons.search, color: Colors.cyanAccent),
-        onPressed: () {
-          _fetchUserFromFirebase(_uidController.text);
-        },
-      ),
-      hintText: "Inserisci UID",
-      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: const Color(0xFF0D1B2A), // Blu notte profondo
+    appBar: AppBar(
+      title: const Text("Impostazioni Profilo", style: TextStyle(fontWeight: FontWeight.w300)),
+      centerTitle: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
     ),
-    // --- AGGIUNGIAMO L'INVIO DA TASTIERA ---
-    onSubmitted: (value) => _fetchUserFromFirebase(value),
-  ),
-),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.copy_rounded, color: Colors.cyanAccent),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: _uidController.text));
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.cloud_download, color: Colors.cyanAccent),
-                  onPressed: () => _fetchUserFromFirebase(_uidController.text),
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
-            const Text("GESTORE ENERGIA", style: TextStyle(color: Colors.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _providerController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.05),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              ),
-            ),
-            const SizedBox(height: 30),
-            Row(
+    body: SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Column(
+        children: [
+          // SEZIONE 1: SINCRONIZZAZIONE
+          _buildSectionCard(
+            title: "Sincronizzazione Cloud",
+            icon: Icons.cloud_sync,
+            color: Colors.orangeAccent,
+            child: Column(
               children: [
-                Expanded(
-                  child: ChoiceChip(
-                    label: const Center(child: Text("MONORARIA")),
-                    selected: !localIsMultirate,
-                    onSelected: (v) => setState(() => localIsMultirate = false),
-                    selectedColor: Colors.cyanAccent,
-                    labelStyle: TextStyle(color: !localIsMultirate ? Colors.black : Colors.white),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ChoiceChip(
-                    label: const Center(child: Text("FASCE")),
-                    selected: localIsMultirate,
-                    onSelected: (v) => setState(() => localIsMultirate = true),
-                    selectedColor: Colors.cyanAccent,
-                    labelStyle: TextStyle(color: localIsMultirate ? Colors.black : Colors.white),
+                _buildTextField("ID Utente", _uidController, icon: Icons.fingerprint),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: _downloadFromCloud,
+                  icon: const Icon(Icons.download_rounded),
+                  label: const Text("SCARICA DATI ESISTENTI"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orangeAccent.withOpacity(0.2),
+                    foregroundColor: Colors.orangeAccent,
+                    side: const BorderSide(color: Colors.orangeAccent),
+                    minimumSize: const Size(double.infinity, 45),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 30),
-            if (!localIsMultirate) ...[
-              const Text("PREZZO MONORARIO (€/kWh)", style: TextStyle(color: Colors.cyanAccent, fontSize: 10)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _monoPriceController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                decoration: const InputDecoration(prefixText: "€ ", prefixStyle: TextStyle(color: Colors.cyanAccent)),
-              ),
-            ] else ...[
-              const Text("CONFIGURAZIONE FASCE", style: TextStyle(color: Colors.cyanAccent, fontSize: 10)),
-              const SizedBox(height: 10),
-              ...localRates.asMap().entries.map((entry) {
-                int i = entry.key;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-                  child: Row(
-                    children: [
-                      Text("F${i + 1}", style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text("INIZIO", style: TextStyle(color: Colors.white38, fontSize: 8)),
-                          TextButton(
-                            onPressed: () => _selectTime(i, 'start'),
-                            style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(50, 30)),
-                            child: Text(localRates[i]['start'], style: const TextStyle(color: Colors.white)),
-                          ),
-                        ],
-                      ),
-                      const Text("-", style: TextStyle(color: Colors.white24)),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text("FINE", style: TextStyle(color: Colors.white38, fontSize: 8)),
-                          TextButton(
-                            onPressed: () => _selectTime(i, 'end'),
-                            style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(50, 30)),
-                            child: Text(localRates[i]['end'], style: const TextStyle(color: Colors.white)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("COSTO €/kWh", style: TextStyle(color: Colors.cyanAccent, fontSize: 8, fontWeight: FontWeight.bold)),
-                            TextFormField(
-                              key: ValueKey("price_${i}_${localRates[i]['price']}"), 
-                              initialValue: localRates[i]['price'].toString().replaceAll('.', ','),
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              style: const TextStyle(color: Colors.white, fontSize: 14),
-                              decoration: const InputDecoration(hintText: "0,00", border: InputBorder.none, isDense: true),
-                              onChanged: (v) {
-                                localRates[i]['price'] = double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                        onPressed: () => setState(() => localRates.removeAt(i)),
-                      )
-                    ],
-                  ),
-                );
-              }).toList(),
-              TextButton.icon(
-                onPressed: () => setState(() => localRates.add({"label": "F", "start": "00:00", "end": "00:00", "price": 0.0})),
-                icon: const Icon(Icons.add, color: Colors.cyanAccent),
-                label: const Text("AGGIUNGI FASCIA", style: TextStyle(color: Colors.cyanAccent)),
-              ),
-            ],
-            const SizedBox(height: 40),
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.cyanAccent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: _saveAndSync,
-                child: const Text("SALVA E SINCRONIZZA", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+          ),
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 15),
-      child: Text(title, style: const TextStyle(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
-    );
-  }
+          const SizedBox(height: 20),
+
+          // SEZIONE 2: PROFILO E VEICOLO
+          _buildSectionCard(
+            title: "Dati Utente e Auto",
+            icon: Icons.person_outline,
+            color: Colors.cyanAccent,
+            child: Column(
+              children: [
+                _buildTextField("Nome Utente", _userNameController, icon: Icons.badge_outlined),
+                const SizedBox(height: 15),
+                _buildTextField("Modello Auto", _vehicleController, icon: Icons.directions_car_filled_outlined),
+                const SizedBox(height: 15),
+                _buildTextField("Capacità Batteria (kWh)", _batteryCapController, icon: Icons.ev_station, isNumber: true),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // SEZIONE 3: COSTI ENERGIA
+          _buildSectionCard(
+            title: "Parametri Economici",
+            icon: Icons.euro_symbol,
+            color: Colors.lightGreenAccent,
+            child: Column(
+              children: [
+                _buildTextField("Fornitore Energia", _providerController, icon: Icons.factory_outlined),
+                const SizedBox(height: 15),
+                _buildTextField("Prezzo (€/kWh)", _monoPriceController, icon: Icons.payments_outlined, isNumber: true),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 40),
+
+          // TASTO SALVA FINALE
+          Container(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(color: Colors.cyanAccent.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 5))
+              ],
+            ),
+            child: ElevatedButton(
+              onPressed: _saveAll,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.cyanAccent,
+                foregroundColor: Colors.black,
+                minimumSize: const Size(double.infinity, 55),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              ),
+              child: const Text("SALVA E SINCRONIZZA TUTTO", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+          ),
+          const SizedBox(height: 50),
+        ],
+      ),
+    ),
+  );
+}
+
+  Widget _buildTextField(String label, TextEditingController controller, {IconData? icon, bool isNumber = false, bool enabled = true}) {
+  return TextField(
+    controller: controller,
+    enabled: enabled,
+    keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+    style: const TextStyle(color: Colors.white, fontSize: 15),
+    decoration: InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+      prefixIcon: icon != null ? Icon(icon, color: Colors.cyanAccent.withOpacity(0.7), size: 20) : null,
+      filled: true,
+      fillColor: Colors.black26,
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.cyanAccent, width: 1)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    ),
+  );
+}
 }

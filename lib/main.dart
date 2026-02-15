@@ -230,6 +230,7 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   bool _isSyncing = false;
   int _selectedYear = DateTime.now().year;
+  String userName = ""; // Aggiungi questa riga insieme alle altre variabili
   String currentLang = 'it'; // Default
   String userId = "";
   String selectedVehicle = "Manuale / Altro";
@@ -280,16 +281,18 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   @override
 void initState() {
-  
   super.initState();
-  _loadSimSettings();
-  _loadData();
-  
-  // Sincronizza il file locale con Firestore e poi aggiorna la UI
+  // Carica i dati locali e poi sincronizza con Firebase
+  initializeDateFormatting('it', null).then((_) {
+    _loadData(); 
+  });
+
+  // Database auto e modelli
   _syncCarsDatabase().then((_) {
     _fetchRemoteModels(); 
   });
 
+  // Timer per l'orologio e animazione sfondo
   _clockTimer = Timer.periodic(const Duration(milliseconds: 100), (t) => _updateClock());
   _bgController = AnimationController(
     vsync: this, 
@@ -552,21 +555,42 @@ Future<void> _loadSimSettings() async {
 
   Future<void> _loadData() async {
   final prefs = await SharedPreferences.getInstance();
-  userId = prefs.getString('uid') ?? const Uuid().v4();
+  
+  // 1. GESTIONE ID
+  String? savedManualId = prefs.getString('last_user_id');
+  if (savedManualId != null && savedManualId.isNotEmpty) {
+    userId = savedManualId;
+  } else {
+    userId = FirebaseAuth.instance.currentUser?.uid ?? "";
+  }
 
-  // 1. CARICAMENTO LOCALE
+  if (userId.isEmpty) {
+    debugPrint("⚠️ Nessun userId trovato.");
+    return;
+  }
+
+  // 2. CARICAMENTO LOCALE VELOCE
   setState(() {
-    batteryCap = prefs.getDouble('cap') ?? 44.0;
-    wallboxPwr = prefs.getDouble('pwr') ?? 3.7;
-    energyProvider = prefs.getString('energyProvider') ?? 'Generico';
-    selectedVehicle = prefs.getString('vehicleName') ?? "Manuale / Altro";
     _uidCtrl.text = userId;
+    batteryCap = prefs.getDouble('batteryCap') ?? 44.0; 
+    wallboxPwr = prefs.getDouble('wallboxPwr') ?? 3.7;
+    energyProvider = prefs.getString('provider') ?? 'Generico';
+    selectedVehicle = prefs.getString('vehicleName') ?? "Manuale / Altro";
+    userName = prefs.getString('userName') ?? ""; // Aggiunto userName locale
+    costPerKwh = prefs.getDouble('monoPrice') ?? 0.20; // Aggiunto costo locale
+    
+    // Aggiornamento Controller grafici
+    _capCtrl.text = batteryCap.toStringAsFixed(1);
+    _pwrCtrl.text = wallboxPwr.toStringAsFixed(1);
+    _costCtrl.text = costPerKwh.toStringAsFixed(2);
     
     final localLogs = prefs.getString('logs');
-    if (localLogs != null) history = List<Map<String, dynamic>>.from(jsonDecode(localLogs));
+    if (localLogs != null) {
+      history = List<Map<String, dynamic>>.from(jsonDecode(localLogs));
+    }
   });
 
-  // 2. DOWNLOAD DA FIREBASE
+  // 3. SINCRONIZZAZIONE CON FIREBASE (Recupero campi mancanti)
   try {
     DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
     
@@ -574,32 +598,46 @@ Future<void> _loadSimSettings() async {
       Map<String, dynamic> cloud = doc.data() as Map<String, dynamic>;
 
       setState(() {
-        // MAPPING ESATTO DAI TUOI DATI FIRESTORE
-        batteryCap = (cloud['batteryCap'] ?? 44).toDouble();
-        wallboxPwr = (cloud['wallboxPwr'] ?? 3.7).toDouble();
-        energyProvider = cloud['provider'] ?? "Generico";
-        isMultirate = cloud['isMultirate'] ?? false;
-        monoPrice = (cloud['monoPrice'] ?? 0.20).toDouble();
+        // Recupero con fallback sul valore locale attuale
+        batteryCap = (cloud['batteryCap'] ?? batteryCap).toDouble();
+        selectedVehicle = cloud['vehicleName'] ?? selectedVehicle;
+        wallboxPwr = (cloud['wallboxPwr'] ?? wallboxPwr).toDouble();
         
-        // Caricamento Rates
-        if (cloud['rates'] != null) {
-          rates = List<Map<String, dynamic>>.from(cloud['rates']);
-        }
+        // --- CAMPI CHE TI MANCAVANO ---
+        userName = cloud['userName'] ?? userName; 
+        energyProvider = cloud['provider'] ?? energyProvider;
+        costPerKwh = (cloud['monoPrice'] ?? costPerKwh).toDouble();
+        monoPrice = costPerKwh; // Allineamento variabile interna
 
-        // CARICAMENTO HISTORY (CRONOLOGIA)
-        if (cloud['history'] != null && (cloud['history'] as List).isNotEmpty) {
+        // AGGIORNAMENTO TESTI A VIDEO (Fondamentale!)
+        _capCtrl.text = batteryCap.toStringAsFixed(1);
+        _pwrCtrl.text = wallboxPwr.toStringAsFixed(1);
+        _costCtrl.text = costPerKwh.toStringAsFixed(2);
+
+        if (cloud['history'] != null) {
           List<dynamic> rawHistory = cloud['history'];
           history = rawHistory.map((e) => Map<String, dynamic>.from(e)).toList();
+          history.sort((a, b) => (b['date'] ?? "").compareTo(a['date'] ?? ""));
         }
       });
 
-      // Salva localmente per coerenza
+      // 4. AGGIORNA LE SHAREDPREFERENCES (Persistenza totale)
+      await prefs.setString('last_user_id', userId);
       await prefs.setString('logs', jsonEncode(history));
-      await prefs.setString('energyProvider', energyProvider);
+      await prefs.setString('provider', energyProvider);
+      await prefs.setString('userName', userName); // Salvataggio nome
+      await prefs.setDouble('batteryCap', batteryCap); 
+      await prefs.setDouble('wallboxPwr', wallboxPwr);
+      await prefs.setDouble('monoPrice', costPerKwh); // Salvataggio prezzo
+      await prefs.setString('vehicleName', selectedVehicle); 
+      
+      debugPrint("✅ Profilo completo recuperato per: $userId");
     }
   } catch (e) {
-    debugPrint("Errore Mapping: $e");
+    debugPrint("❌ Errore Sync Cloud: $e");
   }
+  
+  // Ricalcola i tempi con i nuovi dati
   _updateParams();
 }
 
@@ -613,7 +651,6 @@ Future<void> _loadSimSettings() async {
     if (cap != null) { 
       batteryCap = cap; 
       _capCtrl.text = batteryCap.toStringAsFixed(1);
-      monoPrice = cost ?? 0.0;
     }
     if (cost != null) { 
       costPerKwh = cost; 
@@ -624,17 +661,20 @@ Future<void> _loadSimSettings() async {
     }
   });
 
-  // Salvataggio parametri tecnici
+  // --- SALVATAGGIO CON CHIAVI UNIFICATE PER SETTINGS ---
   if (pwr != null) await prefs.setDouble('pwr', wallboxPwr);
-  if (cap != null) await prefs.setDouble('cap', batteryCap);
+  
+  // CAMBIATO DA 'cap' A 'batteryCap' PER ALLINEARSI AI SETTINGS
+  if (cap != null) await prefs.setDouble('batteryCap', batteryCap); 
+  
   if (cost != null) await prefs.setDouble('cost', costPerKwh);
   
-  // Salvataggio veicolo e stato simulazione
+  // Salvataggio veicolo (Assicurati che sia 'vehicleName')
   await prefs.setString('vehicleName', selectedVehicle);
   
-  // --- CORREZIONE NOMI QUI SOTTO ---
-  await prefs.setDouble('last_soc_start', socStart); // Usato socStart, non startSoc
-  await prefs.setDouble('last_soc_target', socTarget); // Usato socTarget, non targetSoc
+  // Parametri simulazione
+  await prefs.setDouble('last_soc_start', socStart);
+  await prefs.setDouble('last_soc_target', socTarget);
   await prefs.setBool('isActive', isActive); 
 
   _recalcSchedule();
@@ -1317,36 +1357,23 @@ Widget build(BuildContext context) {
 }
 
   void _showSettings() async {
+  // Riceviamo l'eventuale nuovo ID dal Navigator
   final result = await Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (context) => SettingsPage(
-        userId: userId,
-        initialRates: rates,
-        initialIsMultirate: isMultirate,
-        initialMonoPrice: monoPrice,
-        initialProvider: energyProvider,
-      ),
+      builder: (context) => SettingsPage(userId: userId),
     ),
   );
 
-  if (result != null && result is Map<String, dynamic>) {
-    String newId = result['newUserId'];
-    
-    if (newId != userId && newId.isNotEmpty) {
-      // Se l'ID è diverso, scarica tutto (cronologia, auto, ecc.)
-      _syncUser(newId); 
-    } else {
-      // Se l'ID è lo stesso, aggiorna solo i parametri modificati
-      setState(() {
-        rates = result['rates'];
-        isMultirate = result['isMultirate'];
-        monoPrice = result['monoPrice'];
-        energyProvider = result['provider'];
-      });
-      _forceFirebaseSync(); 
-    }
+  // Se result non è nullo, significa che l'ID è cambiato
+  if (result != null && result is String) {
+    setState(() {
+      userId = result;
+    });
   }
+
+  // Ricarichiamo i dati (che ora useranno il nuovo userId)
+  _loadData(); 
 }
 
   void _showVehicleSelector() {
@@ -1358,7 +1385,20 @@ Widget build(BuildContext context) {
         const SizedBox(height: 15),
         Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
         Padding(padding: const EdgeInsets.all(20), child: Row(children: [if (selectedBrand != null) IconButton(icon: const Icon(Icons.arrow_back, color: Colors.cyanAccent), onPressed: () => setModalState(() => selectedBrand = null)), Text(selectedBrand ?? t('select_brand'), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent))])),
-        Expanded(child: selectedBrand == null ? ListView.builder(itemCount: brands.length, itemBuilder: (context, i) => ListTile(title: Text(brands[i]), onTap: () => setModalState(() => selectedBrand = brands[i]))) : ListView.builder(itemCount: models.length, itemBuilder: (context, i) => ListTile(title: Text(models[i]['model']), subtitle: Text("${models[i]['cap']} kWh"), onTap: () { setState(() { selectedVehicle = "${models[i]['brand']} ${models[i]['model']}"; batteryCap = (models[i]['cap'] as num).toDouble(); }); _updateParams(cap: batteryCap); Navigator.pop(context); })))
+        Expanded(child: selectedBrand == null ? ListView.builder(itemCount: brands.length, itemBuilder: (context, i) => ListTile(title: Text(brands[i]), onTap: () => setModalState(() => selectedBrand = brands[i]))) : ListView.builder(itemCount: models.length, itemBuilder: (context, i) => ListTile(title: Text(models[i]['model']), subtitle: Text("${models[i]['cap']} kWh"), onTap: () { 
+          
+          setState(() { 
+            selectedVehicle = "${models[i]['brand']} ${models[i]['model']}"; 
+            batteryCap = (models[i]['cap'] as num).toDouble(); 
+            // AGGIUNTA: Aggiorna il controller della Dashboard così vedi subito il nuovo valore
+            _capCtrl.text = batteryCap.toStringAsFixed(1);
+          }); 
+
+          // MODIFICA QUI: Passiamo SIA la capacità (cap) SIA il nome (vName)
+          _updateParams(cap: batteryCap, vName: selectedVehicle); 
+          
+          Navigator.pop(context); 
+        })))
       ]));
     }));
   }
@@ -1977,32 +2017,40 @@ Map<String, double> _ripartisciConsumi(DateTime inizio, double kwhRichiesti) {
 
 // FUNZIONE 2: Identifica il nome della fascia in base ai minuti (0-1440)
 String _getNomeFascia(int minuti) {
+  if (rates.isEmpty) return "Monoraria";
+
   for (var rate in rates) {
     try {
-      List<String> sP = rate['start'].split(':');
-      List<String> eP = rate['end'].split(':');
-      
-      // Trasformiamo tutto in minuti totali
-      int start = int.parse(sP[0]) * 60 + int.parse(sP[1]);
-      int end = int.parse(eP[0]) * 60 + int.parse(eP[1]);
+      int start;
+      int end;
+
+      // Se i dati sono già in minuti (Int)
+      if (rate['start'] is int) {
+        start = rate['start'];
+        end = rate['end'];
+      } else {
+        // Se i dati sono stringhe "HH:mm"
+        List<String> sP = rate['start'].toString().split(':');
+        List<String> eP = rate['end'].toString().split(':');
+        start = int.parse(sP[0]) * 60 + int.parse(sP[1]);
+        end = int.parse(eP[0]) * 60 + int.parse(eP[1]);
+      }
 
       if (start < end) {
-        // Fascia normale (es. 07:00 - 19:00)
-        // Usiamo >= e < per non lasciare fuori nemmeno un secondo
         if (minuti >= start && minuti < end) return rate['label'].toString();
       } else {
-        // Fascia che scavalca la mezzanotte (es. 19:00 - 07:00)
         if (minuti >= start || minuti < end) return rate['label'].toString();
       }
     } catch (e) {
+      debugPrint("Errore parsing fascia: $e");
       continue;
     }
   }
   
-  // SE IL SISTEMA NON TROVA MATCH (il tuo caso "Default"), 
-  // forziamo l'assegnazione alla prima fascia disponibile invece di scrivere "Default"
-  return rates.isNotEmpty ? rates[0]['label'].toString() : "F1";
+  // Ritorna la prima fascia se non trova match, per non restituire mai null
+  return rates.first['label'].toString();
 }
+
 
 Future<void> _generatePDF() async {
   // 1. CARICAMENTO LOGO DAGLI ASSETS

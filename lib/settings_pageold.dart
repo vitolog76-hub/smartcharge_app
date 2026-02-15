@@ -1,274 +1,256 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
-import 'package:flutter/services.dart';
 
 class SettingsPage extends StatefulWidget {
   final String userId;
-  final List<Map<String, dynamic>> initialRates;
-  final bool initialIsMultirate;
-  final double initialMonoPrice;
-  final String initialProvider;
-
-  const SettingsPage({
-    super.key,
-    required this.userId,
-    required this.initialRates,
-    required this.initialIsMultirate,
-    required this.initialMonoPrice,
-    this.initialProvider = "Generico",
-  });
+  const SettingsPage({super.key, required this.userId});
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  late TextEditingController _uidController;
-  late TextEditingController _providerController;
-  late List<Map<String, dynamic>> localRates;
-  late bool localIsMultirate;
-  late double localMonoPrice;
+  // Controller per i campi di testo
+  final TextEditingController _uidController = TextEditingController();
+  final TextEditingController _userNameController = TextEditingController();
+  final TextEditingController _batteryCapController = TextEditingController();
+  final TextEditingController _vehicleController = TextEditingController();
+  final TextEditingController _providerController = TextEditingController();
+  final TextEditingController _monoPriceController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _uidController = TextEditingController(text: widget.userId);
-    _providerController = TextEditingController(text: widget.initialProvider);
-    // Creiamo una copia profonda della lista per non modificare l'originale prima del salvataggio
-    localRates = List<Map<String, dynamic>>.from(
-      widget.initialRates.map((e) => Map<String, dynamic>.from(e))
-    );
-    localIsMultirate = widget.initialIsMultirate;
-    localMonoPrice = widget.initialMonoPrice;
+    _uidController.text = widget.userId;
+    _loadInitialData();
+  }
+  
+  Future<void> _downloadFromCloud() async {
+  String uid = _uidController.text.trim();
+  if (uid.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Inserisci un ID Utente prima!")));
+    return;
   }
 
-  @override
-  void dispose() {
-    _uidController.dispose();
-    _providerController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _fetchUserFromFirebase(String uid) async {
-    if (uid.isEmpty) return;
-    try {
-      DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      if (doc.exists) {
-        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-        setState(() {
-          _providerController.text = data['provider'] ?? "Generico";
-          localIsMultirate = data['isMultirate'] ?? false;
-          localMonoPrice = (data['monoPrice'] ?? 0.20).toDouble();
-          if (data['rates'] != null) {
-            localRates = List<Map<String, dynamic>>.from(data['rates']);
-          }
-        });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Dati recuperati con successo!")));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Nessun dato trovato per questo ID")));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore: $e")));
-    }
-  }
-
-  Future<void> _saveAndSync() async {
-    try {
-      List<Map<String, dynamic>> ratesToSave = [];
-      for (int i = 0; i < localRates.length; i++) {
-        ratesToSave.add({
-          'label': 'F${i + 1}',
-          'start': localRates[i]['start'] ?? '00:00',
-          'end': localRates[i]['end'] ?? '00:00',
-          'price': double.tryParse(localRates[i]['price'].toString().replaceAll(',', '.')) ?? 0.0,
-        });
-      }
-
-      // 1. SALVATAGGIO LOCALE (SharedPreferences)
+  try {
+    DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    
+    if (doc.exists) {
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('uid', _uidController.text.trim());
-      await prefs.setString('energyProvider', _providerController.text);
-      await prefs.setString('rates', jsonEncode(ratesToSave));
-      await prefs.setBool('isMultirate', localIsMultirate);
-      await prefs.setDouble('monoPrice', localMonoPrice);
 
-      // 2. RITORNO ALLA HOME
-      // Passiamo tutti i nuovi dati al main.dart, che si occuperà del sync protetto
-      if (!mounted) return;
-      Navigator.pop(context, {
-        'newUserId': _uidController.text.trim(),
-        'rates': ratesToSave,
-        'isMultirate': localIsMultirate,
-        'monoPrice': localMonoPrice,
-        'provider': _providerController.text,
+      setState(() {
+        // 1. Aggiorniamo i controller a video
+        _userNameController.text = data['userName'] ?? "";
+        _providerController.text = data['provider'] ?? "Generico";
+        _batteryCapController.text = (data['batteryCap'] ?? 44.0).toString();
+        _monoPriceController.text = (data['monoPrice'] ?? 0.20).toString();
+        _vehicleController.text = data['vehicleName'] ?? "Manuale / Altro";
+
+        // 2. Salviamo subito nelle SharedPreferences (Dati Gold)
+        prefs.setString('last_user_id', uid);
+        prefs.setString('userName', _userNameController.text);
+        prefs.setString('provider', _providerController.text);
+        prefs.setDouble('batteryCap', double.tryParse(_batteryCapController.text) ?? 44.0);
+        prefs.setDouble('monoPrice', double.tryParse(_monoPriceController.text) ?? 0.20);
+        prefs.setString('vehicleName', _vehicleController.text);
+        
+        if (data['history'] != null) {
+          prefs.setString('logs', jsonEncode(data['history']));
+        }
       });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore salvataggio: $e")));
+
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ Dati scaricati con successo!")));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("⚠️ Nessun dato trovato per questo ID")));
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Errore download: $e")));
+  }
+}
+
+  // 1. CARICAMENTO DATI (Legge quello che ha salvato la Dashboard o l'utente)
+  Future<void> _loadInitialData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      // Usiamo 'batteryCap' come chiave unica per la capacità
+      double savedCap = prefs.getDouble('batteryCap') ?? 44.0;
+      _batteryCapController.text = savedCap.toStringAsFixed(1);
+      
+      // Usiamo 'vehicleName' come chiave unica per il modello
+      _vehicleController.text = prefs.getString('vehicleName') ?? "Manuale / Altro";
+      
+      _userNameController.text = prefs.getString('userName') ?? "";
+      _providerController.text = prefs.getString('provider') ?? "Generico";
+      
+      double savedPrice = prefs.getDouble('monoPrice') ?? 0.20;
+      _monoPriceController.text = savedPrice.toStringAsFixed(2);
+    });
+  }
+
+  // 2. SALVATAGGIO (Il metodo che vince su tutto)
+  Future<void> _saveAll() async {
+  String uid = _uidController.text.trim();
+  if (uid.isEmpty) return;
+
+  final prefs = await SharedPreferences.getInstance();
+  
+  // 1. Verifichiamo se l'ID è cambiato rispetto a quello attuale
+  String? oldUid = prefs.getString('last_user_id');
+  bool isNewUser = oldUid != uid;
+
+  try {
+    // 2. Se l'ID è nuovo, proviamo a vedere se ha già dati sul Cloud
+    if (isNewUser) {
+      debugPrint("🔍 Cambio ID rilevato. Controllo dati per: $uid");
+      DocumentSnapshot newDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      
+      if (newDoc.exists) {
+        // Se l'utente esiste, carichiamo i SUOI dati nelle memorie locali
+        Map<String, dynamic> cloudData = newDoc.data() as Map<String, dynamic>;
+        
+        await prefs.setDouble('batteryCap', (cloudData['batteryCap'] ?? 44.0).toDouble());
+        await prefs.setString('vehicleName', cloudData['vehicleName'] ?? "Manuale / Altro");
+        await prefs.setDouble('monoPrice', (cloudData['monoPrice'] ?? 0.20).toDouble());
+        await prefs.setString('userName', cloudData['userName'] ?? "");
+        await prefs.setString('provider', cloudData['provider'] ?? "Generico");
+        
+        // Sincronizziamo anche i log se presenti
+        if (cloudData['history'] != null) {
+          await prefs.setString('logs', jsonEncode(cloudData['history']));
+        }
+        
+        debugPrint("✅ Dati recuperati dal Cloud per il nuovo ID.");
+      }
+    }
+
+    // 3. Preparazione dati per il salvataggio (quello che vedi a schermo)
+    double finalCap = double.tryParse(_batteryCapController.text.replaceAll(',', '.')) ?? 44.0;
+    double finalPrice = double.tryParse(_monoPriceController.text.replaceAll(',', '.')) ?? 0.20;
+
+    // Recuperiamo la cronologia (quella appena scaricata o quella attuale)
+    String historyRaw = prefs.getString('logs') ?? '[]';
+    List<dynamic> currentHistory = jsonDecode(historyRaw);
+
+    Map<String, dynamic> userData = {
+      'userName': _userNameController.text,
+      'provider': _providerController.text,
+      'batteryCap': finalCap,
+      'monoPrice': finalPrice,
+      'vehicleName': _vehicleController.text,
+      'history': currentHistory,
+      'lastUpdate': DateTime.now().toIso8601String(),
+    };
+
+    // 4. Salvataggio su Firestore (Collection 'users')
+    await FirebaseFirestore.instance.collection('users').doc(uid).set(userData, SetOptions(merge: true));
+
+    // 5. Salvataggio Locale definitivo
+    await prefs.setString('last_user_id', uid);
+    await prefs.setDouble('batteryCap', finalCap);
+    await prefs.setString('vehicleName', _vehicleController.text);
+    await prefs.setDouble('monoPrice', finalPrice);
+    await prefs.setString('userName', _userNameController.text);
+    await prefs.setString('provider', _providerController.text);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Profilo aggiornato e sincronizzato!"))
+      );
+      // Passiamo il nuovo UID indietro alla dashboard per sicurezza
+      Navigator.pop(context, uid); 
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Errore durante il cambio ID: $e"))
+      );
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0E21),
+      backgroundColor: const Color(0xFF0A141D),
       appBar: AppBar(
-        title: const Text("IMPOSTAZIONI CONTRATTO", style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text("Impostazioni Profilo"),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save, color: Colors.cyanAccent), 
+            onPressed: _saveAll
+          )
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("ID UTENTE CLOUD", style: TextStyle(color: Colors.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _uidController,
-                    style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.05),
-                      hintText: "Inserisci ID Utente",
-                      hintStyle: const TextStyle(color: Colors.white24),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // --- NUOVO TASTO COPIA ---
-                IconButton(
-                  icon: const Icon(Icons.copy_rounded, color: Colors.cyanAccent),
-                  onPressed: () {
-                    if (_uidController.text.isNotEmpty) {
-                      Clipboard.setData(ClipboardData(text: _uidController.text));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("ID copiato negli appunti!"),
-                          backgroundColor: Colors.cyan,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  },
-                  tooltip: "Copia ID",
-                ),
-                // --- TASTO DOWNLOAD ESISTENTE ---
-                IconButton(
-                  icon: const Icon(Icons.cloud_download, color: Colors.cyanAccent),
-                  onPressed: () => _fetchUserFromFirebase(_uidController.text),
-                  tooltip: "Recupera dati da questo ID",
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
-            const Text("GESTORE ENERGIA", style: TextStyle(color: Colors.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _providerController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.05),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            // CAMPO ID UTENTE
+            _buildTextField("ID Utente (Sincronizzazione)", _uidController, icon: Icons.fingerprint, enabled: true),
+            
+            const SizedBox(height: 10),
+
+            // --- NUOVO PULSANTE PER SCARICARE I DATI ---
+            ElevatedButton.icon(
+              onPressed: _downloadFromCloud, // La funzione che abbiamo scritto prima
+              icon: const Icon(Icons.cloud_download),
+              label: const Text("SCARICA DATI ESISTENTI"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amberAccent,
+                foregroundColor: Colors.black,
+                minimumSize: const Size(double.infinity, 40),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
+
+            const SizedBox(height: 25),
+            const Divider(color: Colors.white24),
+            const SizedBox(height: 15),
+
+            _buildTextField("Nome Utente", _userNameController, icon: Icons.person),
+            const SizedBox(height: 15),
+            _buildTextField("Modello Auto", _vehicleController, icon: Icons.directions_car),
+            const SizedBox(height: 15),
+            _buildTextField("Capacità Batteria (kWh)", _batteryCapController, icon: Icons.battery_charging_full, isNumber: true),
+            const SizedBox(height: 15),
+            _buildTextField("Fornitore Energia", _providerController, icon: Icons.electric_bolt),
+            const SizedBox(height: 15),
+            _buildTextField("Prezzo Mono-orario (€/kWh)", _monoPriceController, icon: Icons.euro, isNumber: true),
+            
             const SizedBox(height: 30),
-            Row(
-              children: [
-                Expanded(
-                  child: ChoiceChip(
-                    label: const Center(child: Text("MONORARIA")),
-                    selected: !localIsMultirate,
-                    onSelected: (v) => setState(() => localIsMultirate = false),
-                    selectedColor: Colors.cyanAccent,
-                    labelStyle: TextStyle(color: !localIsMultirate ? Colors.black : Colors.white),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ChoiceChip(
-                    label: const Center(child: Text("FASCE")),
-                    selected: localIsMultirate,
-                    onSelected: (v) => setState(() => localIsMultirate = true),
-                    selectedColor: Colors.cyanAccent,
-                    labelStyle: TextStyle(color: localIsMultirate ? Colors.black : Colors.white),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
-            if (!localIsMultirate) ...[
-              const Text("PREZZO MONORARIO (€/kWh)", style: TextStyle(color: Colors.cyanAccent, fontSize: 10)),
-              const SizedBox(height: 8),
-              TextField(
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                onChanged: (v) => localMonoPrice = double.tryParse(v.replaceAll(',', '.')) ?? 0.0,
-                controller: TextEditingController(text: localMonoPrice.toString().replaceAll('.', ',')),
-                decoration: const InputDecoration(prefixText: "€ ", prefixStyle: TextStyle(color: Colors.cyanAccent)),
+            
+            ElevatedButton(
+              onPressed: _saveAll,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.cyanAccent,
+                foregroundColor: Colors.black,
+                minimumSize: const Size(double.infinity, 50),
               ),
-            ] else ...[
-              const Text("CONFIGURAZIONE FASCE", style: TextStyle(color: Colors.cyanAccent, fontSize: 10)),
-              const SizedBox(height: 10),
-              ...localRates.asMap().entries.map((entry) {
-                int i = entry.key;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Text("F${i + 1}", style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: TextField(
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              style: const TextStyle(color: Colors.white),
-                              decoration: const InputDecoration(hintText: "Costo €/kWh", border: InputBorder.none),
-                              onChanged: (v) => localRates[i]['price'] = double.tryParse(v.replaceAll(',', '.')) ?? 0.0,
-                              controller: TextEditingController(text: localRates[i]['price'].toString()),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                            onPressed: () => setState(() => localRates.removeAt(i)),
-                          )
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-              TextButton.icon(
-                onPressed: () => setState(() => localRates.add({"label": "F", "start": "00:00", "end": "00:00", "price": 0.0})),
-                icon: const Icon(Icons.add, color: Colors.cyanAccent),
-                label: const Text("AGGIUNGI FASCIA", style: TextStyle(color: Colors.cyanAccent)),
-              ),
-            ],
-            const SizedBox(height: 40),
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.cyanAccent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: _saveAndSync,
-                child: const Text("SALVA E SINCRONIZZA", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-              ),
+              child: const Text("SALVA E SINCRONIZZA", style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller, {IconData? icon, bool isNumber = false, bool enabled = true}) {
+    return TextField(
+      controller: controller,
+      enabled: enabled,
+      keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white70),
+        prefixIcon: Icon(icon, color: Colors.cyanAccent),
+        enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.white24), borderRadius: BorderRadius.circular(12)),
+        focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.cyanAccent), borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

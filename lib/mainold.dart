@@ -15,7 +15,11 @@ import 'package:fl_chart/fl_chart.dart'; // <--- QUESTA È FONDAMENTALE
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 const Map<String, Map<String, String>> localizedValues = {
   'it': {
     'start': 'INIZIO', 
@@ -171,7 +175,9 @@ const Map<String, Map<String, String>> localizedValues = {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('it_IT', null);
+
   try {
+    // Inizializza con i tuoi dati reali che abbiamo trovato prima
     await Firebase.initializeApp(
       options: const FirebaseOptions(
         apiKey: "AIzaSyBdZ7j1pMuabOd47xeBzCPq0g9wBi4jg3A",
@@ -180,10 +186,21 @@ void main() async {
         storageBucket: "smartcharge-c5b34.firebasestorage.app",
         messagingSenderId: "25947690562",
         appId: "1:25947690562:web:613953180d63919a677fdb",
-        measurementId: "G-R35N994658",
-  ),
+      ),
     );
-  } catch (e) { debugPrint("Firebase Bypass: $e"); }
+
+    // LOGIN ANONIMO: Se non c'è un utente, lo crea o lo recupera silenziosemente
+    if (FirebaseAuth.instance.currentUser == null) {
+      await FirebaseAuth.instance.signInAnonymously();
+      debugPrint("✅ Login Anonimo effettuato con successo!");
+    } else {
+      debugPrint("✅ Utente già loggato: ${FirebaseAuth.instance.currentUser?.uid}");
+    }
+
+  } catch (e) {
+    debugPrint("❌ Errore inizializzazione: $e");
+  }
+
   runApp(const SmartChargeApp());
 }
 
@@ -264,13 +281,17 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   @override
 void initState() {
   super.initState();
-  _loadData();
-  
-  // Sincronizza il file locale con Firestore e poi aggiorna la UI
+  // Carica i dati locali e poi sincronizza con Firebase
+  initializeDateFormatting('it', null).then((_) {
+    _loadData(); 
+  });
+
+  // Database auto e modelli
   _syncCarsDatabase().then((_) {
     _fetchRemoteModels(); 
   });
 
+  // Timer per l'orologio e animazione sfondo
   _clockTimer = Timer.periodic(const Duration(milliseconds: 100), (t) => _updateClock());
   _bgController = AnimationController(
     vsync: this, 
@@ -287,6 +308,55 @@ void initState() {
     } catch (e) { debugPrint("Firestore: $e"); }
   }
 
+// Salva i dati della simulazione
+Future<void> _saveSimSettings() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setDouble('last_soc_start', socStart);
+  await prefs.setDouble('last_soc_target', socTarget);
+  await prefs.setDouble('last_wallbox_pwr', wallboxPwr);
+  await prefs.setBool('last_is_active', isActive);
+  await prefs.setString('last_vehicle', selectedVehicle);
+}
+
+// Carica i dati all'avvio
+Future<void> _loadSimSettings() async {
+  final prefs = await SharedPreferences.getInstance();
+  setState(() {
+    // 1. Identità e UI
+    userId = prefs.getString('last_user_id') ?? ""; 
+    _uidCtrl.text = userId;
+
+    // 2. Veicolo e Batteria
+    selectedVehicle = prefs.getString('last_vehicle') ?? "Manuale / Altro";
+    batteryCap = prefs.getDouble('cap') ?? 44.0;
+    _capCtrl.text = batteryCap.toStringAsFixed(1);
+
+    // 3. Cronologia
+    String? historyJson = prefs.getString('local_history');
+    if (historyJson != null) {
+      history = List<Map<String, dynamic>>.from(jsonDecode(historyJson));
+    }
+
+    // 4. Costi e Fornitore (Aggiunti per coerenza)
+    energyProvider = prefs.getString('energyProvider') ?? "Generico";
+    monoPrice = prefs.getDouble('monoPrice') ?? 0.20;
+    isMultirate = prefs.getBool('isMultirate') ?? false;
+    String? ratesJson = prefs.getString('rates');
+    if (ratesJson != null) {
+      rates = List<Map<String, dynamic>>.from(jsonDecode(ratesJson));
+    }
+
+    // 5. Parametri simulazione
+    socStart = prefs.getDouble('last_soc_start') ?? 20.0;
+    socTarget = prefs.getDouble('last_soc_target') ?? 80.0;
+    wallboxPwr = prefs.getDouble('last_wallbox_pwr') ?? 3.7;
+    _pwrCtrl.text = wallboxPwr.toStringAsFixed(1);
+    currentSoc = socStart; 
+  });
+}
+
+  
+  
   Future<void> _syncCarsDatabase() async {
   try {
     final String response = await rootBundle.loadString('assets/cars.json');
@@ -319,8 +389,8 @@ void initState() {
   }
 }
   Future<void> _forceFirebaseSync() async {
-  // SE STA SINCRONIZZANDO O SE LA HISTORY LOCALE È VUOTA, NON SCRIVERE
-  if (_isSyncing || userId.isEmpty || history.isEmpty) return;
+  // Rimosso history.isEmpty per permettere il salvataggio dei parametri anche senza ricariche effettuate
+  if (_isSyncing || userId.isEmpty) return;
 
   try {
     await FirebaseFirestore.instance.collection('users').doc(userId).set({
@@ -329,6 +399,12 @@ void initState() {
       'isMultirate': isMultirate,
       'monoPrice': monoPrice,
       'rates': rates,
+      // --- AGGIUNGI QUESTI CAMPI FONDAMENTALI ---
+      'vehicleName': selectedVehicle,
+      'cap': batteryCap,
+      'pwr': wallboxPwr,
+      'cost': costPerKwh,
+      // ------------------------------------------
       'lastUpdate': DateTime.now().toIso8601String(),
     }, SetOptions(merge: true));
   } catch (e) {
@@ -338,8 +414,7 @@ void initState() {
 
   void _syncUser(String newId) async {
   if (newId.isEmpty) return;
-  
-  setState(() => _isSyncing = true); // BLOCCA ALTRI SALVATAGGI
+  setState(() => _isSyncing = true);
 
   try {
     final doc = await FirebaseFirestore.instance.collection('users').doc(newId).get();
@@ -347,7 +422,6 @@ void initState() {
     if (doc.exists) {
       var data = doc.data()!;
       
-      // Carica la cronologia in locale
       List<Map<String, dynamic>> fetchedHistory = [];
       if (data['history'] != null) {
         fetchedHistory = List<Map<String, dynamic>>.from(data['history']);
@@ -356,25 +430,30 @@ void initState() {
 
       setState(() {
         userId = newId;
-        history = fetchedHistory; // ORA LA CRONOLOGIA LOCALE È ALLINEATA AL CLOUD
+        history = fetchedHistory; // ASSEGNAZIONE LOG
+        selectedVehicle = data['vehicleName'] ?? 'Manuale / Altro';
+        batteryCap = (data['cap'] ?? 44.0).toDouble();
+        
+        // AGGIORNA I BOX DI TESTO
+        _uidCtrl.text = newId;
+        _capCtrl.text = batteryCap.toStringAsFixed(1);
+
         energyProvider = data['provider'] ?? 'Generico';
         isMultirate = data['isMultirate'] ?? false;
         monoPrice = (data['monoPrice'] ?? 0.20).toDouble();
-        if (data['rates'] != null) {
-          rates = (data['rates'] as List).map((e) => Map<String, dynamic>.from(e)).toList();
-        }
       });
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('uid', newId);
-      await prefs.setString('logs', jsonEncode(history));
+      await prefs.setString('last_user_id', newId);
       
-      _showSnack("Dati recuperati con successo!");
+      // CHIAVE FONDAMENTALE PER LA CRONOLOGIA
+      await prefs.setString('local_history', jsonEncode(history)); 
+      
+      await prefs.setString('last_vehicle', selectedVehicle);
+      await prefs.setDouble('cap', batteryCap);
     }
-  } catch (e) {
-    debugPrint("Errore Sync: $e");
   } finally {
-    setState(() => _isSyncing = false); // SBLOCCA
+    setState(() => _isSyncing = false);
   }
 }
 
@@ -475,20 +554,36 @@ void initState() {
 
   Future<void> _loadData() async {
   final prefs = await SharedPreferences.getInstance();
-  userId = prefs.getString('uid') ?? const Uuid().v4();
+  
+  // 1. GESTIONE ID: Diamo priorità all'ID incollato nei settings
+  String? savedManualId = prefs.getString('last_user_id');
+  if (savedManualId != null && savedManualId.isNotEmpty) {
+    userId = savedManualId;
+  } else {
+    // Se non c'è, proviamo quello di Firebase Auth
+    userId = FirebaseAuth.instance.currentUser?.uid ?? "";
+  }
 
-  // 1. CARICAMENTO LOCALE
+  if (userId.isEmpty) {
+    debugPrint("⚠️ Nessun userId trovato.");
+    return;
+  }
+
+  // 2. CARICAMENTO LOCALE VELOCE (Usa le chiavi definitive)
   setState(() {
-    batteryCap = prefs.getDouble('cap') ?? 44.0;
-    wallboxPwr = prefs.getDouble('pwr') ?? 3.7;
-    energyProvider = prefs.getString('energyProvider') ?? 'Generico';
     _uidCtrl.text = userId;
+    batteryCap = prefs.getDouble('batteryCap') ?? 44.0;
+    wallboxPwr = prefs.getDouble('wallboxPwr') ?? 3.7;
+    energyProvider = prefs.getString('provider') ?? 'Generico';
+    selectedVehicle = prefs.getString('last_vehicle') ?? "Manuale / Altro";
     
     final localLogs = prefs.getString('logs');
-    if (localLogs != null) history = List<Map<String, dynamic>>.from(jsonDecode(localLogs));
+    if (localLogs != null) {
+      history = List<Map<String, dynamic>>.from(jsonDecode(localLogs));
+    }
   });
 
-  // 2. DOWNLOAD DA FIREBASE
+  // 3. SINCRONIZZAZIONE CON FIREBASE
   try {
     DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
     
@@ -496,49 +591,75 @@ void initState() {
       Map<String, dynamic> cloud = doc.data() as Map<String, dynamic>;
 
       setState(() {
-        // MAPPING ESATTO DAI TUOI DATI FIRESTORE
-        batteryCap = (cloud['batteryCap'] ?? 44).toDouble();
+        // Allineamento con i campi che vedi in Firestore console
+        batteryCap = (cloud['batteryCap'] ?? 44.0).toDouble();
         wallboxPwr = (cloud['wallboxPwr'] ?? 3.7).toDouble();
         energyProvider = cloud['provider'] ?? "Generico";
         isMultirate = cloud['isMultirate'] ?? false;
         monoPrice = (cloud['monoPrice'] ?? 0.20).toDouble();
-        
-        // Caricamento Rates
-        if (cloud['rates'] != null) {
-          rates = List<Map<String, dynamic>>.from(cloud['rates']);
-        }
+        selectedVehicle = cloud['vehicle'] ?? (cloud['vehicleName'] ?? "Manuale / Altro");
 
-        // CARICAMENTO HISTORY (CRONOLOGIA)
-        if (cloud['history'] != null && (cloud['history'] as List).isNotEmpty) {
+        if (cloud['history'] != null) {
           List<dynamic> rawHistory = cloud['history'];
           history = rawHistory.map((e) => Map<String, dynamic>.from(e)).toList();
+          // Ordiniamo la cronologia per data
+          history.sort((a, b) => (b['date'] ?? "").compareTo(a['date'] ?? ""));
         }
       });
 
-      // Salva localmente per coerenza
+      // 4. AGGIORNA LE SHAREDPREFERENCES (con le chiavi giuste!)
+      await prefs.setString('last_user_id', userId);
       await prefs.setString('logs', jsonEncode(history));
-      await prefs.setString('energyProvider', energyProvider);
+      await prefs.setString('provider', energyProvider);
+      await prefs.setDouble('batteryCap', batteryCap);
+      await prefs.setDouble('wallboxPwr', wallboxPwr);
+      await prefs.setString('last_vehicle', selectedVehicle);
+      
+      debugPrint("✅ Sincronizzazione Cloud completata per: $userId");
     }
   } catch (e) {
-    debugPrint("Errore Mapping: $e");
+    debugPrint("❌ Errore Sync: $e");
   }
   _updateParams();
 }
 
-  void _updateParams({double? pwr, double? cap, double? cost}) async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      if (pwr != null) { wallboxPwr = pwr.clamp(1.5, 11.0); _pwrCtrl.text = wallboxPwr.toStringAsFixed(1); }
-      if (cap != null) { batteryCap = cap; _capCtrl.text = batteryCap.toStringAsFixed(1);
-      monoPrice = cost ?? 0.0;}
-      if (cost != null) { costPerKwh = cost; _costCtrl.text = cost.toStringAsFixed(2); }
-    });
-    if (pwr != null) prefs.setDouble('pwr', wallboxPwr);
-    if (cap != null) { prefs.setDouble('cap', batteryCap); prefs.setString('vehicleName', selectedVehicle); }
-    if (cost != null) prefs.setDouble('cost', costPerKwh);
-    _recalcSchedule();
-    _forceFirebaseSync();
-  }
+  void _updateParams({double? pwr, double? cap, double? cost, String? vName}) async {
+  final prefs = await SharedPreferences.getInstance();
+  setState(() {
+    if (pwr != null) { 
+      wallboxPwr = pwr.clamp(1.5, 11.0); 
+      _pwrCtrl.text = wallboxPwr.toStringAsFixed(1); 
+    }
+    if (cap != null) { 
+      batteryCap = cap; 
+      _capCtrl.text = batteryCap.toStringAsFixed(1);
+      monoPrice = cost ?? 0.0;
+    }
+    if (cost != null) { 
+      costPerKwh = cost; 
+      _costCtrl.text = cost.toStringAsFixed(2); 
+    }
+    if (vName != null) {
+      selectedVehicle = vName;
+    }
+  });
+
+  // Salvataggio parametri tecnici
+  if (pwr != null) await prefs.setDouble('pwr', wallboxPwr);
+  if (cap != null) await prefs.setDouble('cap', batteryCap);
+  if (cost != null) await prefs.setDouble('cost', costPerKwh);
+  
+  // Salvataggio veicolo e stato simulazione
+  await prefs.setString('vehicleName', selectedVehicle);
+  
+  // --- CORREZIONE NOMI QUI SOTTO ---
+  await prefs.setDouble('last_soc_start', socStart); // Usato socStart, non startSoc
+  await prefs.setDouble('last_soc_target', socTarget); // Usato socTarget, non targetSoc
+  await prefs.setBool('isActive', isActive); 
+
+  _recalcSchedule();
+  _forceFirebaseSync();
+}
 
   void _toggleSystem() async {
   HapticFeedback.mediumImpact();
@@ -565,9 +686,109 @@ void initState() {
       
       prefs.setDouble('soc_s', socStart);
       prefs.setDouble('currentSoc', currentSoc);
+      _saveSimSettings();
     }
   });
   prefs.setBool('isActive', isActive);
+}
+
+  void _showPublicChargeDialog() {
+  print("Click ricevuto!");
+  final TextEditingController providerCtrl = TextEditingController(text: "Enel X"); // Valore di default
+  final TextEditingController kwhCtrl = TextEditingController();
+  final TextEditingController costCtrl = TextEditingController();
+
+  showDialog(
+    context: context,
+    barrierDismissible: false, // L'utente deve scegliere se salvare o annullare
+    builder: (context) => AlertDialog(
+      title: const Text("NUOVA CARICA PUBBLICA", style: TextStyle(fontWeight: FontWeight.bold)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: providerCtrl,
+              decoration: const InputDecoration(
+                labelText: "Fornitore",
+                hintText: "es. Tesla, BeCharge, Ionity",
+                prefixIcon: Icon(Icons.business),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: kwhCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: "kWh caricati",
+                prefixIcon: Icon(Icons.bolt),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: costCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: "Costo Totale (€)",
+                prefixIcon: Icon(Icons.euro),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("ANNULLA", style: TextStyle(color: Colors.grey)),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, foregroundColor: Colors.white),
+          onPressed: () {
+            // Conversione dei dati inseriti
+            final double kwh = double.tryParse(kwhCtrl.text.replaceAll(',', '.')) ?? 0.0;
+            final double cost = double.tryParse(costCtrl.text.replaceAll(',', '.')) ?? 0.0;
+            final String provider = providerCtrl.text.trim().isEmpty ? "Generico" : providerCtrl.text.trim();
+
+            if (kwh > 0) {
+              _savePublicLog(kwh, cost, provider);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Ricarica $provider salvata!")),
+              );
+            }
+          },
+          child: const Text("SALVA"),
+        ),
+      ],
+    ),
+  );
+}
+
+// Funzione di supporto per salvare il log pubblico
+void _savePublicLog(double kwh, double cost, String provider) async {
+  final now = DateTime.now();
+  
+  // Creiamo l'entry per il log includendo il modello auto selezionato
+  final Map<String, dynamic> newLog = {
+    'date': now.toIso8601String(),
+    'kwh': kwh,
+    'cost': cost,
+    'provider': provider.isEmpty ? 'Generico' : provider, 
+    'type': 'public',     
+    'car': selectedVehicle, // <--- Salviamo il modello dell'auto!
+    'dettaglio': {'Esterna': kwh.toStringAsFixed(2)}, 
+  };
+
+  setState(() {
+    history.insert(0, newLog);
+  });
+
+  // Aggiorna SharedPreferences
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('logs', jsonEncode(history));
+  
+  // Se hai una funzione di sync con Firebase/Vercel, chiamala qui
+  // _forceFirebaseSync(); 
 }
 
   void _save(bool tot) async {
@@ -704,7 +925,7 @@ void _addLogEntry(DateTime date, double kwh) async {
   // 3. SALVIAMO IL LOG CON IL DETTAGLIO KWH
   final log = {
     'date': date.toIso8601String(),
-    'kwh': kwh,
+    'kwh': double.parse(kwh.toStringAsFixed(2)),
     'cost': double.parse(finalCost.toStringAsFixed(2)),
     'provider': energyProvider,
     'isMultirate': isMultirate,
@@ -801,28 +1022,46 @@ void _addLogEntry(DateTime date, double kwh) async {
   Widget _glassCircle(double s, Color c) => Container(width: s, height: s, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [c, c.withOpacity(0.1), Colors.transparent], stops: const [0.0, 0.45, 1.0])));
 
   @override
-  Widget build(BuildContext context) {
-    Color statusCol = isCharging ? Colors.greenAccent : (isWaiting ? Colors.orangeAccent : Colors.cyanAccent);
-    return Scaffold(
-      body: Stack(children: [
+Widget build(BuildContext context) {
+  Color statusCol = isCharging ? Colors.greenAccent : (isWaiting ? Colors.orangeAccent : Colors.cyanAccent);
+  
+  return Scaffold(
+    body: Stack(
+      children: [
         _liquidBackground(),
-        SafeArea(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
-          _header(),
-          _compactMainRow(),
-          _statusBadge(statusCol, isCharging ? t('status_charging') : (isWaiting ? t('status_wait') : t('status_off'))),
-          const SizedBox(height: 25),
-          _premiumBatterySection(currentSoc), 
-          _energyEstimates(),
-          _paramSliders(), 
-          const Spacer(),
-          _controls(),
-          const SizedBox(height: 15),
-          _actionButtons(),
-          const SizedBox(height: 10),
-        ]))),
-      ]),
-    );
-  }
+        SafeArea(
+          // AVVOLGI TUTTO IL PADDING IN UNO SCROLL
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  _header(),
+                  _compactMainRow(),
+                  _statusBadge(statusCol, isCharging ? t('status_charging') : (isWaiting ? t('status_wait') : t('status_off'))),
+                  const SizedBox(height: 25),
+                  _premiumBatterySection(currentSoc), 
+                  _energyEstimates(),
+                  _paramSliders(), 
+                  
+                  // SOSTITUISCI IL 'Spacer()' CON UN SIZEDBOX FISSO
+                  // Questo evita che la colonna provi a "esplodere" verso il basso
+                  const SizedBox(height: 20), 
+                  
+                  _controls(),
+                  const SizedBox(height: 15),
+                  _actionButtons(),
+                  const SizedBox(height: 20), // Un po' di respiro alla fine
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _header() => Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
     IconButton(icon: const Icon(Icons.settings_outlined, color: Colors.white30), onPressed: _showSettings),
@@ -878,44 +1117,93 @@ void _addLogEntry(DateTime date, double kwh) async {
   Widget _infoLabel(String l, String v, Color c) => Column(children: [Text(l, style: const TextStyle(fontSize: 9, color: Colors.white38)), Text(v, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: c))]);
   Widget _statusBadge(Color col, String text) => Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(color: col.withOpacity(0.1), borderRadius: BorderRadius.circular(20), border: Border.all(color: col.withOpacity(0.2))), child: Text(text, style: TextStyle(color: col, fontSize: 10, fontWeight: FontWeight.bold)));
 
-  Widget _paramSliders() => Column(children: [
-    _sliderRow(t('potenza_wallbox'), "${wallboxPwr.toStringAsFixed(1)} kW", wallboxPwr, 1.5, 11.0, 0.1, Colors.orangeAccent, (v) => _updateParams(pwr: v)),
-    const SizedBox(height: 10),
-    _sliderRowWithAction(t('capacita_batteria'), "${batteryCap.toStringAsFixed(1)} kWh", batteryCap, 10, 150, 0.1, Colors.cyanAccent, (v) => _updateParams(cap: v), _showVehicleSelector),
-    Padding(
-      padding: const EdgeInsets.only(top: 15),
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(border: Border.symmetric(horizontal: BorderSide(color: Colors.amberAccent.withOpacity(0.1), width: 0.5))),
-          child: Text(
-            selectedVehicle.toUpperCase(),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 4, fontFamily: 'monospace', color: Colors.amberAccent,
-              shadows: [
-                Shadow(color: Colors.orangeAccent.withOpacity(0.8), blurRadius: 10),
-                Shadow(color: Colors.orangeAccent.withOpacity(0.5), blurRadius: 20),
-                Shadow(color: Colors.amberAccent.withOpacity(0.3), blurRadius: 30),
+  Widget _paramSliders() => Column(
+    mainAxisSize: MainAxisSize.min, // Occupa solo lo spazio necessario
+    children: [
+      _sliderRow(t('potenza_wallbox'), "${wallboxPwr.toStringAsFixed(1)} kW", wallboxPwr, 1.5, 11.0, 0.1, Colors.orangeAccent, (v) => _updateParams(pwr: v)),
+      const SizedBox(height: 5), // Ridotto da 10 a 5
+      _sliderRow(t('capacita_batteria'), "${batteryCap.toStringAsFixed(1)} kWh", batteryCap, 10, 150, 0.1, Colors.cyanAccent, (v) => _updateParams(cap: v)),
+      
+      const SizedBox(height: 12), // Ridotto da 20 a 12
+
+      GestureDetector(
+        onTap: _showVehicleSelector,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6), // Padding più sottile
+            decoration: BoxDecoration(
+              color: Colors.amberAccent.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.amberAccent.withOpacity(0.15), width: 1),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.search_rounded, color: Colors.amberAccent, size: 16), // Icona più piccola
+                    const SizedBox(width: 6),
+                    Text(
+                      "CAMBIA AUTO",
+                      style: TextStyle(color: Colors.amberAccent.withOpacity(0.6), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                    ),
+                  ],
+                ),
+                Text(
+                  selectedVehicle.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 16, // Ridotto da 18 a 16
+                    fontWeight: FontWeight.w900, 
+                    letterSpacing: 2, 
+                    fontFamily: 'monospace', 
+                    color: Colors.amberAccent,
+                    shadows: [Shadow(color: Colors.orangeAccent.withOpacity(0.6), blurRadius: 8)],
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ),
-    ),
-  ]);
+    ],
+  );
 
-  Widget _sliderRow(String lab, String val, double v, double min, double max, double step, Color c, Function(double) onC) => Column(children: [
+  Widget _sliderRow(String lab, String val, double v, double min, double max, double step, Color c, Function(double) onC) {
+  return Column(children: [
     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
       Text(lab, style: const TextStyle(fontSize: 10, color: Colors.white38)), 
       Text(val, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: c))
     ]),
     Row(children: [
-      IconButton(icon: const Icon(Icons.remove_circle_outline, size: 20, color: Colors.white24), onPressed: () => onC((v - step).clamp(min, max))),
-      Expanded(child: Slider(value: v.clamp(min, max), min: min, max: max, activeColor: c, onChanged: onC)),
-      IconButton(icon: const Icon(Icons.add_circle_outline, size: 20, color: Colors.white24), onPressed: () => onC((v + step).clamp(min, max))),
+      IconButton(
+        icon: const Icon(Icons.remove_circle_outline, size: 20, color: Colors.white24), 
+        onPressed: () {
+          onC((v - step).clamp(min, max));
+          _saveSimSettings(); // <--- SALVA AL CLICK SUL MENO
+        }
+      ),
+      Expanded(
+        child: Slider(
+          value: v.clamp(min, max), 
+          min: min, 
+          max: max, 
+          activeColor: c, 
+          onChanged: (newValue) {
+            onC(newValue);
+            _saveSimSettings(); // <--- SALVA QUANDO TRASCINI
+          }
+        )
+      ),
+      IconButton(
+        icon: const Icon(Icons.add_circle_outline, size: 20, color: Colors.white24), 
+        onPressed: () {
+          onC((v + step).clamp(min, max));
+          _saveSimSettings(); // <--- SALVA AL CLICK SUL PIÙ
+        }
+      ),
     ]),
   ]);
+}
 
   Widget _sliderRowWithAction(String lab, String val, double v, double min, double max, double step, Color c, Function(double) onC, VoidCallback onAct) => Column(children: [
     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -941,46 +1229,125 @@ void _addLogEntry(DateTime date, double kwh) async {
 
   Widget _touchControl(String l, String v, VoidCallback t) => InkWell(onTap: t, child: Column(children: [Text(l, style: const TextStyle(fontSize: 9, color: Colors.white38)), Text(v, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.cyanAccent))]));
 
-  Widget _actionButtons() => Column(children: [
-    SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: _toggleSystem, style: ElevatedButton.styleFrom(backgroundColor: isActive ? Colors.redAccent : Colors.cyanAccent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text(isActive ? t('btn_stop') : t('btn_attiva'), style: const TextStyle(fontWeight: FontWeight.w900)))),
-    const SizedBox(height: 10),
-    Row(children: [
-      Expanded(child: OutlinedButton(onPressed: () => _save(false), child: Text(t('save_partial')))),
-      const SizedBox(width: 10),
-      Expanded(child: ElevatedButton(onPressed: () => _save(true), style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black), child: Text(t('save_total')))),
-    ]),
-  ]);
+  Widget _actionButtons() => Column(
+    children: [
+      // 1. BLOCCO SIMULAZIONE (Sempre in alto)
+      SizedBox(
+        width: double.infinity,
+        height: 60,
+        child: ElevatedButton.icon(
+          icon: Icon(isActive ? Icons.stop_circle : Icons.play_circle_filled, size: 28),
+          label: Text(
+            isActive ? t('btn_stop').toUpperCase() : "AVVIA SIMULAZIONE CASA",
+            style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.1),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isActive ? Colors.redAccent : Colors.cyanAccent,
+            foregroundColor: Colors.black,
+            elevation: 4,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          ),
+          onPressed: _toggleSystem,
+        ),
+      ),
 
-  void _showSettings() async {
-  final result = await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => SettingsPage(
-        userId: userId,
-        initialRates: rates,
-        initialIsMultirate: isMultirate,
-        initialMonoPrice: monoPrice,
-        initialProvider: energyProvider,
+      const SizedBox(height: 12),
+
+      // 2. BLOCCO GESTIONE DATI (I tuoi 3 pulsanti originali)
+      Row(
+        children: [
+          _buildMiniButton(
+            icon: Icons.ev_station,
+            label: "CARICA\nPUBBLICA",
+            color: Colors.blueAccent,
+            onTap: () => _showPublicChargeDialog(),
+          ),
+          const SizedBox(width: 8),
+          _buildMiniButton(
+            icon: Icons.save_outlined,
+            label: "SALVA\nPARZIALE",
+            color: Colors.white70,
+            onTap: () => _save(false),
+          ),
+          const SizedBox(width: 8),
+          _buildMiniButton(
+            icon: Icons.check_circle,
+            label: "SALVA\nTOTALE",
+            color: Colors.greenAccent,
+            onTap: () => _save(true),
+          ),
+        ],
+      ),
+
+      const SizedBox(height: 12),
+
+      // 3. NUOVA RIGA: SOLO CARICA MANUALE (Così non hai errori di 'userId')
+      Row(
+        children: [
+          _buildMiniButton(
+            icon: Icons.edit_calendar,
+            label: "CARICA\nMANUALE",
+            color: Colors.orangeAccent,
+            onTap: () => _showManualEntryDialog(),
+          ),
+          // Questi due servono a mantenere il pulsante arancione della stessa misura degli altri
+          const SizedBox(width: 8),
+          const Expanded(child: SizedBox()),
+          const SizedBox(width: 8),
+          const Expanded(child: SizedBox()),
+        ],
+      ),
+    ],
+  );
+
+// Helper per i bottoni piccoli della riga inferiore
+  
+  Widget _buildMiniButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+  return Expanded( // Lo mettiamo qui per sicurezza, così occupa lo spazio corretto nella Row
+    child: GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque, // <--- Questo dice a iOS: "Tutta l'area è cliccabile"
+      child: Container(
+        height: 75,
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: color.withOpacity(0.5), width: 1.5),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 28, color: color), // Icona più grande per un target migliore
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: color.withOpacity(0.9),
+                height: 1.1,
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );
+}
 
-  if (result != null && result is Map<String, dynamic>) {
-    String newId = result['newUserId'];
-    // Se l'ID è cambiato, forza la sincronizzazione dal cloud
-    if (newId != userId) {
-      _syncUser(newId); 
-    } else {
-      // Altrimenti aggiorna solo i parametri locali
-      setState(() {
-        rates = result['rates'];
-        isMultirate = result['isMultirate'];
-        monoPrice = result['monoPrice'];
-        energyProvider = result['provider'];
-      });
-      _forceFirebaseSync(); // Salva i nuovi settaggi sull'ID corrente
-    }
-  }
+  void _showSettings() async {
+  // Apriamo la pagina passando solo l'ID
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => SettingsPage(userId: userId),
+    ),
+  );
+
+  // Quando l'utente chiude i Settings e torna qui, 
+  // ricarichiamo tutto dal database/cache per aggiornare la Home
+  _loadData(); 
 }
 
   void _showVehicleSelector() {
@@ -1040,31 +1407,89 @@ void _addLogEntry(DateTime date, double kwh) async {
   }
 
   void _showManualEntry(Function setModal) {
-    DateTime manualDate = DateTime.now();
-    TimeOfDay manualTime = TimeOfDay.now();
-    final TextEditingController kwhCtrl = TextEditingController();
-    showDialog(context: context, builder: (c) => StatefulBuilder(builder: (c, st) => AlertDialog(
-      backgroundColor: const Color(0xFF0A141D),
-      title: Text(t('inserimento_manuale'), style: TextStyle(color: Colors.cyanAccent, fontSize: 16)),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        ListTile(title: Text(DateFormat('dd/MM/yyyy').format(manualDate)), leading: const Icon(Icons.calendar_today), onTap: () async { final d = await showDatePicker(context: context, initialDate: manualDate, firstDate: DateTime(2020), lastDate: DateTime.now()); if(d != null) st(() => manualDate = d); }),
-        ListTile(title: Text(manualTime.format(context)), leading: const Icon(Icons.access_time), onTap: () async { final t = await showTimePicker(context: context, initialTime: manualTime); if(t != null) st(() => manualTime = t); }),
-        TextField(controller: kwhCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "kWh caricati", suffixText: "kWh")),
-      ]),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(c), child: const Text("ANNULLA")),
-        ElevatedButton(onPressed: () {
-          double? k = double.tryParse(kwhCtrl.text.replaceAll(',', '.'));
-          if (k != null) {
-            DateTime finalDt = DateTime(manualDate.year, manualDate.month, manualDate.day, manualTime.hour, manualTime.minute);
-            _addLogEntry(finalDt, k);
-            Navigator.pop(c);
-            setModal(() {}); 
-          }
-        }, child: const Text("SALVA"))
-      ],
-    )));
-  }
+  print("DEBUG: Funzione _showManualEntry chiamata!");
+  DateTime manualDate = DateTime.now();
+  TimeOfDay manualTime = TimeOfDay.now();
+  final TextEditingController kwhCtrl = TextEditingController();
+
+  // Usiamo il rootNavigator per essere sicuri che iOS lo mostri sopra a tutto
+  showDialog(
+    context: context,
+    useRootNavigator: true, // Fondamentale per iOS
+    builder: (c) => StatefulBuilder(
+      builder: (ctx, st) => AlertDialog(
+        backgroundColor: const Color(0xFF0A141D),
+        title: Text(
+          t('inserimento_manuale'),
+          style: const TextStyle(color: Colors.cyanAccent, fontSize: 16),
+        ),
+        content: SingleChildScrollView( // Aggiunto per evitare errori di pixel con la tastiera su iPhone
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text(DateFormat('dd/MM/yyyy').format(manualDate)),
+                leading: const Icon(Icons.calendar_today, color: Colors.white),
+                onTap: () async {
+                  final d = await showDatePicker(
+                    context: ctx,
+                    initialDate: manualDate,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (d != null) st(() => manualDate = d);
+                },
+              ),
+              ListTile(
+                title: Text(manualTime.format(ctx)),
+                leading: const Icon(Icons.access_time, color: Colors.white),
+                onTap: () async {
+                  final t = await showTimePicker(context: ctx, initialTime: manualTime);
+                  if (t != null) st(() => manualTime = t);
+                },
+              ),
+              TextField(
+                controller: kwhCtrl,
+                style: const TextStyle(color: Colors.white),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: "kWh caricati",
+                  labelStyle: TextStyle(color: Colors.cyanAccent),
+                  suffixText: "kWh",
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c),
+            child: const Text("ANNULLA"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent),
+            onPressed: () {
+              // Chiude la tastiera su iOS
+              FocusScope.of(ctx).unfocus();
+              
+              double? k = double.tryParse(kwhCtrl.text.replaceAll(',', '.'));
+              if (k != null) {
+                DateTime finalDt = DateTime(
+                  manualDate.year, manualDate.month, manualDate.day,
+                  manualTime.hour, manualTime.minute
+                );
+                _addLogEntry(finalDt, k);
+                Navigator.pop(c);
+                setModal(() {});
+              }
+            },
+            child: const Text("SALVA", style: TextStyle(color: Colors.black)),
+          )
+        ],
+      ),
+    ),
+  );
+}
 
 void _showHistory() {
     showModalBottomSheet(
@@ -1130,20 +1555,29 @@ void _showHistory() {
         const SizedBox(width: 8), // Un po' di spazio tra le frecce e il PDF
         IconButton(
           icon: const Icon(Icons.picture_as_pdf, color: Colors.redAccent),
-          onPressed: () => _generatePDF(),
           tooltip: "Esporta PDF",
+          onPressed: () async {
+            // 1. Feedback visivo per l'utente
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Generazione PDF in corso..."), 
+                duration: Duration(seconds: 2)
+              ),
+            );
+
+            // 2. Delay tecnico per Safari (iPhone)
+            await Future.delayed(const Duration(milliseconds: 500));
+
+            // 3. Chiamata alla funzione
+            await _generatePDF();
+          },
         ),
       ],
     ),
-                        IconButton(
-  icon: const Icon(Icons.add_circle_outline, color: Colors.cyanAccent, size: 30),
-  onPressed: () {
-    // Chiude momentaneamente la cronologia per non sovrapporre i popup
-    Navigator.pop(context); 
-    // Apre la finestra di inserimento dettagliata
-    _showManualEntryDialog();
-  },
-),
+                        
+
+
+
                       ],
                     ),
                   ),
@@ -1250,8 +1684,40 @@ void _showHistory() {
                           return const Center(child: Text("Nessun dato", style: TextStyle(color: Colors.white38)));
                         }
 
+                        // Funzione veloce per sommare i kWh di un mese specifico
+double sommaKwhMese(int sottraiMesi) {
+  final target = DateTime(ora.year, ora.month - sottraiMesi);
+  return history.where((log) {
+    final d = DateTime.parse(log['date']);
+    return d.month == target.month && d.year == target.year;
+  }).fold(0.0, (sum, log) => sum + (double.tryParse(log['kwh'].toString()) ?? 0.0));
+}
+
+final kwhAttuale = sommaKwhMese(0);
+final kwhScorso = sommaKwhMese(1);
+final kwhDueFa = sommaKwhMese(2);
+                        
                         return ListView(
                           children: [
+                            Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 15),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildStat("2 MESI FA", kwhDueFa),
+            _buildStat("MESE SCORSO", kwhScorso),
+            _buildStat("ATTUALE", kwhAttuale, active: true),
+          ],
+        ),
+      ),
+    ),
                             // --- SEZIONE QUESTO MESE ---
                             if (ricaricheMeseCorrente.isNotEmpty) ...[
                               const Padding(
@@ -1301,32 +1767,60 @@ void _showHistory() {
                                 style: TextStyle(color: Colors.white38, fontSize: 12)))
                             else
                               ...ricaricheAnnoSelezionato.map((log) {
-                                final date = DateTime.parse(log['date']);
-                                return Dismissible(
-                                  key: Key(log['date'] + "archivio"),
-                                  direction: DismissDirection.endToStart,
-                                  background: Container(
-                                    alignment: Alignment.centerRight, 
-                                    padding: const EdgeInsets.only(right: 20), 
-                                    color: Colors.redAccent, 
-                                    child: const Icon(Icons.delete, color: Colors.white)
-                                  ),
-                                  onDismissed: (dir) async {
-                                    setState(() => history.removeWhere((e) => e['date'] == log['date']));
-                                    setModalState(() {});
-                                    final prefs = await SharedPreferences.getInstance();
-                                    await prefs.setString('logs', jsonEncode(history));
-                                  },
-                                  child: ListTile(
-                                    leading: const Icon(Icons.history, color: Colors.white38),
-                                    title: Text("${log['provider']} - ${log['cost']}€", 
-                                      style: const TextStyle(color: Colors.white)),
-                                    subtitle: Text(DateFormat('dd/MM HH:mm').format(date), 
-                                      style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                                    trailing: Text("${log['kwh']} kWh", style: const TextStyle(color: Colors.white70)),
-                                  ),
-                                );
-                              }).toList(),
+  final date = DateTime.parse(log['date']);
+  return Dismissible(
+    key: Key(log['date'] + "archivio"),
+    direction: DismissDirection.endToStart,
+    background: Container(
+      alignment: Alignment.centerRight, 
+      padding: const EdgeInsets.only(right: 20), 
+      color: Colors.redAccent, 
+      child: const Icon(Icons.delete, color: Colors.white)
+    ),
+    onDismissed: (dir) async {
+      setState(() => history.removeWhere((e) => e['date'] == log['date']));
+      setModalState(() {});
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('logs', jsonEncode(history));
+    },
+    child: ListTile(
+      leading: Icon(
+        log['type'] == 'public' ? Icons.ev_station : Icons.home, 
+        color: log['type'] == 'public' ? Colors.blueAccent : Colors.cyanAccent,
+        size: 20,
+      ),
+      title: Text(
+        "${log['type'] == 'public' ? (log['provider'] ?? 'Colonnina') : 'Casa'} - ${log['cost']}€", 
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            DateFormat('dd/MM HH:mm').format(date), 
+            style: const TextStyle(color: Colors.white38, fontSize: 11)
+          ),
+          // --- RIGA AUTO ---
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              "🚗 ${log['car'] ?? 'Modello non salvato'}", 
+              style: TextStyle(
+                color: log['car'] != null ? Colors.amberAccent : Colors.white24, 
+                fontSize: 10, 
+                fontWeight: FontWeight.bold
+              ),
+            ),
+          ),
+        ],
+      ),
+      trailing: Text(
+        "${log['kwh']} kWh", 
+        style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)
+      ),
+    ),
+  );
+}).toList(),
                           ],
                         );
                       },
@@ -1348,6 +1842,7 @@ void _showManualEntryDialog() async {
 
   showDialog(
     context: context,
+    useRootNavigator: true,
     builder: (c) => StatefulBuilder(
       builder: (context, setModal) => AlertDialog(
         backgroundColor: const Color(0xFF0A141D),
@@ -1483,59 +1978,215 @@ Map<String, double> _ripartisciConsumi(DateTime inizio, double kwhRichiesti) {
 
 // FUNZIONE 2: Identifica il nome della fascia in base ai minuti (0-1440)
 String _getNomeFascia(int minuti) {
+  if (rates.isEmpty) return "Monoraria";
+
   for (var rate in rates) {
     try {
-      List<String> sP = rate['start'].split(':');
-      List<String> eP = rate['end'].split(':');
-      
-      // Trasformiamo tutto in minuti totali
-      int start = int.parse(sP[0]) * 60 + int.parse(sP[1]);
-      int end = int.parse(eP[0]) * 60 + int.parse(eP[1]);
+      int start;
+      int end;
+
+      // Se i dati sono già in minuti (Int)
+      if (rate['start'] is int) {
+        start = rate['start'];
+        end = rate['end'];
+      } else {
+        // Se i dati sono stringhe "HH:mm"
+        List<String> sP = rate['start'].toString().split(':');
+        List<String> eP = rate['end'].toString().split(':');
+        start = int.parse(sP[0]) * 60 + int.parse(sP[1]);
+        end = int.parse(eP[0]) * 60 + int.parse(eP[1]);
+      }
 
       if (start < end) {
-        // Fascia normale (es. 07:00 - 19:00)
-        // Usiamo >= e < per non lasciare fuori nemmeno un secondo
         if (minuti >= start && minuti < end) return rate['label'].toString();
       } else {
-        // Fascia che scavalca la mezzanotte (es. 19:00 - 07:00)
         if (minuti >= start || minuti < end) return rate['label'].toString();
       }
     } catch (e) {
+      debugPrint("Errore parsing fascia: $e");
       continue;
     }
   }
   
-  // SE IL SISTEMA NON TROVA MATCH (il tuo caso "Default"), 
-  // forziamo l'assegnazione alla prima fascia disponibile invece di scrivere "Default"
-  return rates.isNotEmpty ? rates[0]['label'].toString() : "F1";
+  // Ritorna la prima fascia se non trova match, per non restituire mai null
+  return rates.first['label'].toString();
 }
+
+
 Future<void> _generatePDF() async {
+  // 1. CARICAMENTO LOGO DAGLI ASSETS
+  // Assicurati che il file sia in assets/logo.png e registrato in pubspec.yaml
+  pw.MemoryImage? logo;
+  try {
+    final bytes = await rootBundle.load('assets/logo.png');
+    logo = pw.MemoryImage(bytes.buffer.asUint8List());
+  } catch (e) {
+    debugPrint("Logo non trovato o errore: $e");
+    // Se non trova il logo, il PDF verrà generato comunque senza immagine
+  }
+
+  // 2. RECUPERO DATI UTENTE E VEICOLO
+  final prefs = await SharedPreferences.getInstance();
+  final String userName = prefs.getString('user_name') ?? "Non specificato";
+  final String carPlate = prefs.getString('car_plate') ?? "N/A";
+  final String currentVehicle = selectedVehicle; 
+
   final pdf = pw.Document();
   final DateTime ora = DateTime.now();
+  double granTotaleKwh = 0;
+  double granTotaleEuro = 0;
+
+  // 3. Raggruppamento dati per Mese
+  Map<String, List<Map<String, dynamic>>> raggruppato = {};
+  history.sort((a, b) => DateTime.parse(a['date']).compareTo(DateTime.parse(b['date'])));
+
+  for (var log in history) {
+    DateTime d = DateTime.parse(log['date']);
+    if (d.year == _selectedYear) {
+      String mese = DateFormat('MMMM', 'it').format(d).toUpperCase();
+      if (!raggruppato.containsKey(mese)) raggruppato[mese] = [];
+      raggruppato[mese]!.add(log);
+      
+      granTotaleKwh += double.tryParse(log['kwh'].toString()) ?? 0;
+      granTotaleEuro += double.tryParse(log['cost'].toString()) ?? 0;
+    }
+  }
 
   pdf.addPage(
     pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(32),
       build: (pw.Context context) => [
-        pw.Header(level: 0, child: pw.Text("REPORT RICARICHE SMARTCHARGE", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-        pw.Text("ID Utente: $userId"),
-        pw.Text("Data Report: ${DateFormat('dd/MM/yyyy HH:mm').format(ora)}"),
-        pw.SizedBox(height: 20),
-        pw.TableHelper.fromTextArray(
-          headers: ['Data', 'Gestore', 'kWh', 'Costo'],
-          data: history.map((log) {
-            return [
-              log['date'].toString().substring(0, 10),
-              log['provider'] ?? 'Generico',
-              "${log['kwh']} kWh",
-              "${log['cost']} €"
-            ];
-          }).toList(),
+        // INTESTAZIONE CON LOGO
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Row(
+              children: [
+                if (logo != null) ...[
+                  pw.Image(logo, width: 50, height: 50),
+                  pw.SizedBox(width: 15),
+                ],
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text("REPORT RICARICHE SMARTCHARGE", 
+                        style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 5),
+                    pw.Text("Utente: $userName", style: pw.TextStyle(fontSize: 11)),
+                    pw.Text("Veicolo: $currentVehicle", style: pw.TextStyle(fontSize: 11)),
+                    pw.Text("Targa: $carPlate", style: pw.TextStyle(fontSize: 11)),
+                  ],
+                ),
+              ],
+            ),
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                pw.Text("Anno: $_selectedYear", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                pw.Text("Data: ${DateFormat('dd/MM/yyyy').format(ora)}", style: pw.TextStyle(fontSize: 10)),
+              ],
+            ),
+          ],
+        ),
+        pw.SizedBox(height: 10),
+        pw.Divider(thickness: 1),
+        pw.SizedBox(height: 15),
+
+        // TABELLE MENSILI
+        ...raggruppato.entries.map((entry) {
+          double meseKwh = 0;
+          double meseEuro = 0;
+          for (var item in entry.value) {
+            meseKwh += double.tryParse(item['kwh'].toString()) ?? 0;
+            meseEuro += double.tryParse(item['cost'].toString()) ?? 0;
+          }
+
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Padding(
+                padding: const pw.EdgeInsets.symmetric(vertical: 8),
+                child: pw.Text(entry.key, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey800)),
+              ),
+              pw.TableHelper.fromTextArray(
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headers: ['Data', 'Gestore', 'kWh', 'Costo (EUR)'],
+                data: entry.value.map((log) {
+                  return [
+                    DateFormat('dd/MM/yy').format(DateTime.parse(log['date'])),
+                    log['provider'] ?? '-',
+                    log['kwh'].toString(),
+                    "EUR ${double.tryParse(log['cost'].toString())?.toStringAsFixed(2)}"
+                  ];
+                }).toList(),
+              ),
+              pw.Container(
+                alignment: pw.Alignment.centerRight,
+                padding: const pw.EdgeInsets.only(top: 5, bottom: 15),
+                child: pw.Text(
+                  "Subtotale ${entry.key}: ${meseKwh.toStringAsFixed(2)} kWh",
+                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+
+        pw.Divider(thickness: 1),
+        // TOTALE GENERALE
+        pw.Container(
+          alignment: pw.Alignment.centerRight,
+          padding: const pw.EdgeInsets.only(top: 10),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              pw.Text("RIEPILOGO ANNUALE", style: pw.TextStyle(fontSize: 10)),
+              pw.Text("Energia Totale: ${granTotaleKwh.toStringAsFixed(2)} kWh", style: pw.TextStyle(fontSize: 12)),
+              pw.Text("SPESA TOTALE: EUR ${granTotaleEuro.toStringAsFixed(2)}", 
+                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+            ],
+          ),
         ),
       ],
     ),
   );
 
-  await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
+  // Generazione del PDF
+  final pdfBytes = await pdf.save();
+  final String fileName = "Report_SmartCharge_${_selectedYear}_${carPlate.replaceAll(' ', '_')}.pdf";
+
+  try {
+    await Printing.sharePdf(
+      bytes: pdfBytes,
+      filename: fileName,
+    );
+  } catch (e) {
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdfBytes,
+      name: fileName,
+    );
+  }
+}
+Widget _buildStat(String label, double valore, {bool active = false}) {
+  return Column(
+    children: [
+      Text(label, 
+        style: const TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 5),
+      Text(
+        valore.toStringAsFixed(1),
+        style: TextStyle(
+          color: active ? Colors.cyanAccent : Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      const Text("kWh", style: TextStyle(color: Colors.white38, fontSize: 9)),
+    ],
+  );
 }
 } // CHIUDE LA CLASSE _DashboardState
 

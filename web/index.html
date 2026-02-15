@@ -7,12 +7,8 @@
   <title>SmartCharge</title>
 
   <link rel="icon" href="favicon.ico" sizes="any">
-  
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-
   <link rel="manifest" href="manifest.json">
-  
-  ...
 </head>
 <body>
   <script>
@@ -22,7 +18,11 @@
         serviceWorkerVersion: {{flutter_service_worker_version}},
       },
       onEntrypointLoaded: function(engineInitializer) {
-        engineInitializer.initializeEngine().then(function(appRunner) {
+        // --- MODIFICA QUI ---
+        engineInitializer.initializeEngine({
+          renderer: "html", // Forza l'uso di HTML invece di CanvasKit
+          useColorEmoji: true
+        }).then(function(appRunner) {
           appRunner.runApp();
         });
       }
