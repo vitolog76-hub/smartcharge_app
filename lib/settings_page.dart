@@ -3,14 +3,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 class SettingsPage extends StatefulWidget {
   final String userId;
   final List<Map<String, dynamic>> initialRates;
   final bool initialIsMultirate;
   final double initialMonoPrice;
   final String initialProvider;
-
+  
   const SettingsPage({
     super.key,
     required this.userId,
@@ -25,65 +25,66 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  late TextEditingController _uidController;
-  late TextEditingController _providerController;
-  late TextEditingController _userNameController;
-  late TextEditingController _carPlateController;
-  late TextEditingController _monoPriceController;
-  late List<Map<String, dynamic>> localRates;
-  late bool localIsMultirate;
-  late double localMonoPrice;
+  // Inizializziamo subito i controller invece di usare 'late'
+  final _uidController = TextEditingController();
+  final _providerController = TextEditingController();
+  final _userNameController = TextEditingController();
+  final _vehicleController = TextEditingController();
+  final _batteryCapController = TextEditingController();
+  final _carPlateController = TextEditingController();
+  final _monoPriceController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    _uidController = TextEditingController(text: widget.userId);
-    _providerController = TextEditingController(text: widget.initialProvider);
-    _userNameController = TextEditingController();
-    _carPlateController = TextEditingController();
-    
-    localRates = List<Map<String, dynamic>>.from(
-      widget.initialRates.map((e) => Map<String, dynamic>.from(e))
-    );
-    localIsMultirate = widget.initialIsMultirate;
-    _monoPriceController = TextEditingController(
-      text: widget.initialMonoPrice.toString().replaceAll('.', ',')
-    );
-   
-    _loadUserData();
+  // Variabili di stato con valori di default
+  List<Map<String, dynamic>> localRates = [];
+  bool localIsMultirate = false;
+  double localMonoPrice = 0.0;
+
+@override
+void initState() {
+  super.initState();
+
+  // 1. Inizializza il controller vuoto (per evitare il crash "late")
+  // (Assicurati che sia dichiarato come: final _uidController = TextEditingController();)
+
+  // 2. ASPETTA CHE IL FRAME SIA DISEGNATO PRIMA DI CERCARE L'ID
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _effettuaLoginERecuperaID();
+  });
+}
+
+// Crea questa nuova funzione più robusta
+Future<void> _effettuaLoginERecuperaID() async {
+  final user = FirebaseAuth.instance.currentUser;
+  
+  if (user != null) {
+    setState(() {
+      _uidController.text = user.uid;
+    });
+    print("✅ ID recuperato: ${user.uid}");
+  } else {
+    print("⚠️ Nessun utente trovato, il login nel main ha fallito.");
+    setState(() {
+      _uidController.text = "NON LOGGATO";
+    });
   }
-
+}
   
   
   
   Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
+  // 1. Recupera l'utente attuale (che è anonimo)
+  final user = FirebaseAuth.instance.currentUser;
+
+  if (user != null) {
     setState(() {
-      _userNameController.text = prefs.getString('user_name') ?? "";
-      _carPlateController.text = prefs.getString('car_plate') ?? "";
-      _providerController.text = prefs.getString('energyProvider') ?? widget.initialProvider;
-      localIsMultirate = prefs.getBool('isMultirate') ?? widget.initialIsMultirate;
-      
-      double savedPrice = prefs.getDouble('monoPrice') ?? widget.initialMonoPrice;
-      _monoPriceController.text = savedPrice.toString().replaceAll('.', ',');
-
-      // CARICAMENTO DELLE FASCE SALVATE LOCALMENTE
-      String? savedRatesJson = prefs.getString('rates');
-      if (savedRatesJson != null) {
-        localRates = List<Map<String, dynamic>>.from(jsonDecode(savedRatesJson));
-      }
+      // Scrive l'ID nel controller così lo vedi a video
+      _uidController.text = user.uid;
     });
+    print("ID UTENTE VISUALIZZATO: ${user.uid}");
+  } else {
+    print("ATTENZIONE: Nessun utente trovato!");
   }
-
-  @override
-  void dispose() {
-    _uidController.dispose();
-    _providerController.dispose();
-    _userNameController.dispose();
-    _carPlateController.dispose();
-    _monoPriceController.dispose();
-    super.dispose();
-  }
+}
   
   Future<void> _selectTime(int index, String field) async {
     final TimeOfDay? picked = await showTimePicker(

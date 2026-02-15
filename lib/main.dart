@@ -15,7 +15,11 @@ import 'package:fl_chart/fl_chart.dart'; // <--- QUESTA È FONDAMENTALE
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 const Map<String, Map<String, String>> localizedValues = {
   'it': {
     'start': 'INIZIO', 
@@ -171,7 +175,9 @@ const Map<String, Map<String, String>> localizedValues = {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('it_IT', null);
+
   try {
+    // Inizializza con i tuoi dati reali che abbiamo trovato prima
     await Firebase.initializeApp(
       options: const FirebaseOptions(
         apiKey: "AIzaSyBdZ7j1pMuabOd47xeBzCPq0g9wBi4jg3A",
@@ -180,10 +186,21 @@ void main() async {
         storageBucket: "smartcharge-c5b34.firebasestorage.app",
         messagingSenderId: "25947690562",
         appId: "1:25947690562:web:613953180d63919a677fdb",
-        measurementId: "G-R35N994658",
-  ),
+      ),
     );
-  } catch (e) { debugPrint("Firebase Bypass: $e"); }
+
+    // LOGIN ANONIMO: Se non c'è un utente, lo crea o lo recupera silenziosemente
+    if (FirebaseAuth.instance.currentUser == null) {
+      await FirebaseAuth.instance.signInAnonymously();
+      debugPrint("✅ Login Anonimo effettuato con successo!");
+    } else {
+      debugPrint("✅ Utente già loggato: ${FirebaseAuth.instance.currentUser?.uid}");
+    }
+
+  } catch (e) {
+    debugPrint("❌ Errore inizializzazione: $e");
+  }
+
   runApp(const SmartChargeApp());
 }
 
