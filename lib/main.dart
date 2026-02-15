@@ -497,7 +497,7 @@ Future<void> _loadSimSettings() async {
       await Future.delayed(const Duration(milliseconds: 300));
     }
   }
-  void _processCharging() async {
+  Future<void> _processCharging() async {
     // Se siamo già al target, non fare nulla
     if (currentSoc >= socTarget) return;
 
@@ -513,6 +513,7 @@ Future<void> _loadSimSettings() async {
     if (ms > 0) {
       double kwhAdded = (wallboxPwr * (ms / 3600000));
       double socAdded = (kwhAdded / batteryCap) * 100;
+      
       setState(() { 
         energySession += kwhAdded; 
         double nextSoc = currentSoc + socAdded;
@@ -523,9 +524,11 @@ Future<void> _loadSimSettings() async {
           currentSoc = nextSoc;
         }
       });
-      prefs.setDouble('currentSoc', currentSoc);
-      prefs.setDouble('energySession', energySession);
-      prefs.setInt('last_timestamp', nowCharge.millisecondsSinceEpoch);
+
+      // --- AGGIUNTO AWAIT PER GARANTIRE LA SCRITTURA SU DISCO ---
+      await prefs.setDouble('currentSoc', currentSoc);
+      await prefs.setDouble('energySession', energySession);
+      await prefs.setInt('last_timestamp', nowCharge.millisecondsSinceEpoch);
     }
     _lastTick = nowCharge;
   }
@@ -576,10 +579,9 @@ Future<void> _loadSimSettings() async {
     wallboxPwr = prefs.getDouble('wallboxPwr') ?? 3.7;
     energyProvider = prefs.getString('provider') ?? 'Generico';
     selectedVehicle = prefs.getString('vehicleName') ?? "Manuale / Altro";
-    userName = prefs.getString('userName') ?? ""; // Aggiunto userName locale
-    costPerKwh = prefs.getDouble('monoPrice') ?? 0.20; // Aggiunto costo locale
+    userName = prefs.getString('userName') ?? ""; 
+    costPerKwh = prefs.getDouble('monoPrice') ?? 0.20; 
     
-    // Aggiornamento Controller grafici
     _capCtrl.text = batteryCap.toStringAsFixed(1);
     _pwrCtrl.text = wallboxPwr.toStringAsFixed(1);
     _costCtrl.text = costPerKwh.toStringAsFixed(2);
@@ -590,7 +592,7 @@ Future<void> _loadSimSettings() async {
     }
   });
 
-  // 3. SINCRONIZZAZIONE CON FIREBASE (Recupero campi mancanti)
+  // 3. SINCRONIZZAZIONE CON FIREBASE
   try {
     DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
     
@@ -598,18 +600,14 @@ Future<void> _loadSimSettings() async {
       Map<String, dynamic> cloud = doc.data() as Map<String, dynamic>;
 
       setState(() {
-        // Recupero con fallback sul valore locale attuale
         batteryCap = (cloud['batteryCap'] ?? batteryCap).toDouble();
         selectedVehicle = cloud['vehicleName'] ?? selectedVehicle;
         wallboxPwr = (cloud['wallboxPwr'] ?? wallboxPwr).toDouble();
-        
-        // --- CAMPI CHE TI MANCAVANO ---
         userName = cloud['userName'] ?? userName; 
         energyProvider = cloud['provider'] ?? energyProvider;
         costPerKwh = (cloud['monoPrice'] ?? costPerKwh).toDouble();
-        monoPrice = costPerKwh; // Allineamento variabile interna
+        monoPrice = costPerKwh; 
 
-        // AGGIORNAMENTO TESTI A VIDEO (Fondamentale!)
         _capCtrl.text = batteryCap.toStringAsFixed(1);
         _pwrCtrl.text = wallboxPwr.toStringAsFixed(1);
         _costCtrl.text = costPerKwh.toStringAsFixed(2);
@@ -621,20 +619,48 @@ Future<void> _loadSimSettings() async {
         }
       });
 
-      // 4. AGGIORNA LE SHAREDPREFERENCES (Persistenza totale)
       await prefs.setString('last_user_id', userId);
       await prefs.setString('logs', jsonEncode(history));
       await prefs.setString('provider', energyProvider);
-      await prefs.setString('userName', userName); // Salvataggio nome
+      await prefs.setString('userName', userName); 
       await prefs.setDouble('batteryCap', batteryCap); 
       await prefs.setDouble('wallboxPwr', wallboxPwr);
-      await prefs.setDouble('monoPrice', costPerKwh); // Salvataggio prezzo
+      await prefs.setDouble('monoPrice', costPerKwh); 
       await prefs.setString('vehicleName', selectedVehicle); 
       
       debugPrint("✅ Profilo completo recuperato per: $userId");
     }
   } catch (e) {
     debugPrint("❌ Errore Sync Cloud: $e");
+  }
+
+  // --- 4. RECUPERO STATO SIMULAZIONE (IL NUOVO BLOCCO) ---
+  bool savedIsActive = prefs.getBool('isActive') ?? false;
+  if (savedIsActive) {
+    setState(() {
+      isActive = true;
+      // Recuperiamo dove eravamo rimasti
+      currentSoc = prefs.getDouble('currentSoc') ?? currentSoc;
+      energySession = prefs.getDouble('energySession') ?? 0.0;
+      
+      String? lockedDateStr = prefs.getString('lockedStartDate');
+      if (lockedDateStr != null) {
+        lockedStartDate = DateTime.parse(lockedDateStr);
+      }
+    });
+
+    // Calcoliamo subito il tempo passato mentre l'app era chiusa
+    await _processCharging();
+
+    // Verifichiamo se nel frattempo ha finito di caricare
+    if (currentSoc >= socTarget) {
+      setState(() {
+        isActive = false;
+        isCharging = false;
+        isWaiting = false;
+      });
+      await prefs.setBool('isActive', false);
+    }
   }
   
   // Ricalcola i tempi con i nuovi dati
@@ -689,13 +715,21 @@ Future<void> _loadSimSettings() async {
     if (!isActive) { 
       isWaiting = false; isCharging = false; _lastTick = null; 
       lockedStartDate = null; // Sblocca l'orario
+      
+      // PULIZIA PERSISTENZA
       prefs.remove('last_timestamp');
       prefs.remove('lockedStartDate');
+      prefs.remove('simulation_start_soc'); // Rimuoviamo il punto zero
+      prefs.setBool('isActive', false);
     } else { 
       _lastTick = DateTime.now(); 
       prefs.setInt('last_timestamp', _lastTick!.millisecondsSinceEpoch);
       
-      // CONGELA L'ORA DI INIZIO ADESSO
+      // --- NUOVO: SALVIAMO IL SOC DI PARTENZA PER IL RECUPERO ---
+      prefs.setDouble('simulation_start_soc', currentSoc);
+      prefs.setBool('isActive', true);
+
+      // CONGELA L'ORA DI INIZIO ADESSO (Tua logica originale)
       double kwhNeeded = ((socTarget - currentSoc) / 100) * batteryCap;
       int mins = ((kwhNeeded.clamp(0.0, 500) / wallboxPwr) * 60).round();
       DateTime target = DateTime(now.year, now.month, now.day, targetTimeInput.hour, targetTimeInput.minute);
@@ -709,7 +743,7 @@ Future<void> _loadSimSettings() async {
       _saveSimSettings();
     }
   });
-  prefs.setBool('isActive', isActive);
+  // Nota: prefs.setBool('isActive', isActive) è già gestito sopra per sicurezza
 }
 
   void _showPublicChargeDialog() {
